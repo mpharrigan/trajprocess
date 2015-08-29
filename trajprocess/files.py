@@ -31,6 +31,13 @@ class Project:
         elif self.mdtype == 'bw':
             return glob.glob("{}/run-*/".format(self.indir))
 
+    def get_infos(self):
+        return (
+            {'project': self.code,
+             'raw_indir': indir}
+            for indir in self.get_run_clone_dirs()
+        )
+
 
 def write_infos(infos):
     for info in infos:
@@ -38,24 +45,25 @@ def write_infos(infos):
             json.dump(info, f, indent=2)
 
 
-def main(*projects):
+def process_projects(*projects):
     for project in projects:
-        run_clone_dirs = project.get_run_clone_dirs()
+        raw_infos = project.get_infos()
         with Pool() as pool:
-            nfo_infos = pool.imap_unordered(project.nfo, run_clone_dirs)
+            nfo_infos = pool.imap_unordered(project.nfo, raw_infos)
             cat_infos = pool.imap_unordered(project.cat, nfo_infos)
             cnv_infos = pool.imap_unordered(project.cnv, cat_infos)
 
             write_infos(cnv_infos)
 
 
-def sample_main():
-    return main(
+def main():
+    return process_projects(
         Project('p9704', 'data/PROJ9704', 'x21'),
         Project('p9751', 'data/PROJ9751', 'xa4'),
         # Project('v4', 'data/v4', 'bw'),
         # Project('v5', 'data/v5', 'bw'),
     )
 
+
 if __name__ == "__main__":
-    sample_main()
+    main()

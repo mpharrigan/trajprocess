@@ -5,30 +5,30 @@ import re
 from datetime import date
 
 
-def nfo_traj(run_clone_directory, *, rncln_re):
-    rncln_ma = rncln_re.search(run_clone_directory)
+def nfo_traj(info, *, rncln_re):
+    rncln_ma = rncln_re.search(info['raw_indir'])
     info = {
-        'nfo_indir': os.path.realpath(run_clone_directory),
+        'nfo_indir': os.path.realpath(info['raw_indir']),
         'run': int(rncln_ma.group(1)),
         'clone': int(rncln_ma.group(2)),
         'idate': date.today().isoformat(),
     }
-    info['nfo_outdir'] = "{idate}/{run}/{clone}/".format(**info)
+    info['nfo_outdir'] = "{idate}/{project}/{run}/{clone}/".format(**info)
     info['nfo_nfoout'] = "{nfo_outdir}".format(**info)
     os.makedirs(info['nfo_outdir'], exist_ok=True)
     return info
 
 
-def nfo_a4(run_clone_directory):
+def nfo_a4(info):
     return nfo_traj(
-        run_clone_directory,
+        info,
         rncln_re=re.compile(r"RUN(\d+)/CLONE(\d+)/"),
     )
 
 
-def nfo_21(run_clone_directory):
+def nfo_21(info):
     return nfo_traj(
-        run_clone_directory,
+        info,
         rncln_re=re.compile(r"RUN(\d+)/CLONE(\d+)/"),
     )
 
@@ -108,7 +108,12 @@ def cnv_21(info):
 
 
 def cnv_a4(info):
+    if info['project'] == 'p9752':
+        stride = 4
+    else:
+        stride = 1
+
     return cnv_traj(
         info,
-        stride=4  # WARNING! Only applicable for project 9752
+        stride=stride,
     )
