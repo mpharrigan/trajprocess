@@ -56,3 +56,6 @@ def sample_main():
         # Project('v4', 'data/v4', 'bw'),
         # Project('v5', 'data/v5', 'bw'),
     )
+
+if __name__ == "__main__":
+    sample_main()
