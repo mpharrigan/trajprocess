@@ -18,7 +18,7 @@ class Project:
             self.nfo = process.nfo_21
             self.cat = process.cat_21
             self.cnv = process.cnv_21
-        elif mdtype == 'a4':
+        elif mdtype == 'xa4':
             self.nfo = process.nfo_a4
             self.cat = process.cat_a4
             self.cnv = process.cnv_a4
@@ -45,16 +45,23 @@ def write_infos(infos):
             json.dump(info, f, indent=2)
 
 
+def record(func):
+    def new_func(info):
+        info = func(info)
+        with open(info['nfo_nfoout'], 'w') as f:
+            json.dump(info, f, indent=2)
+        return info
+
+    return new_func
+
+
 def process_projects(*projects):
     for project in projects:
         raw_infos = project.get_infos()
         with Pool() as pool:
-            nfo_infos = pool.imap_unordered(project.nfo, raw_infos)
-            write_infos(nfo_infos)
-            cat_infos = pool.imap_unordered(project.cat, nfo_infos)
-            write_infos(cat_infos)
-            cnv_infos = pool.imap_unordered(project.cnv, cat_infos)
-            write_infos(cnv_infos)
+            nfo_infos = pool.imap_unordered(record(project.nfo), raw_infos)
+            cat_infos = pool.imap_unordered(record(project.cat), nfo_infos)
+            cnv_infos = pool.imap_unordered(record(project.cnv), cat_infos)
 
 
 def main():
