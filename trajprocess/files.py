@@ -49,7 +49,6 @@ def process_projects(*projects):
     for project in projects:
         raw_infos = project.get_infos()
         with Pool() as pool:
-            write_infos(raw_infos)
             nfo_infos = pool.imap_unordered(project.nfo, raw_infos)
             write_infos(nfo_infos)
             cat_infos = pool.imap_unordered(project.cat, nfo_infos)
