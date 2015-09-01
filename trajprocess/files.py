@@ -8,7 +8,7 @@ from . import process
 
 class Project:
     def __init__(self, code, indir, mdtype):
-        assert mdtype in ['x21, xa4, bw']
+        assert mdtype in ['x21', 'xa4', 'bw']
 
         self.code = code
         self.indir = indir
