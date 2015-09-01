@@ -14,7 +14,7 @@ def nfo_traj(info, *, rncln_re):
         'idate': date.today().isoformat(),
     })
     info['nfo_outdir'] = "{idate}/{project}/{run}/{clone}/".format(**info)
-    info['nfo_nfoout'] = "{nfo_outdir}".format(**info)
+    info['nfo_nfoout'] = "{nfo_outdir}/info.json".format(**info)
     os.makedirs(info['nfo_outdir'], exist_ok=True)
     return info
 
