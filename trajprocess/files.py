@@ -5,6 +5,10 @@ import glob
 import json
 from . import process
 
+import logging
+
+log = logging.getLogger(__name__)
+
 
 class Project:
     def __init__(self, code, indir, mdtype):
@@ -38,6 +42,9 @@ class Project:
             for indir in self.get_run_clone_dirs()
         )
 
+    def __repr__(self):
+        return "{code} ({indir})".format(**self.__dict__)
+
 
 def write_infos(infos):
     for info in infos:
@@ -57,6 +64,7 @@ def record(func):
 
 def process_projects(*projects):
     for project in projects:
+        log.info("Starting project {}".format(project))
         raw_infos = project.get_infos()
         with Pool() as pool:
             nfo_infos = pool.imap_unordered(record(project.nfo), raw_infos)
@@ -74,4 +82,5 @@ def main():
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     main()

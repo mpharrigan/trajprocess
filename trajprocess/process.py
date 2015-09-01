@@ -4,6 +4,10 @@ import glob
 import re
 from datetime import date
 
+import logging
+
+log = logging.getLogger(__name__)
+
 
 def nfo_traj(info, *, rncln_re):
     rncln_ma = rncln_re.search(info['raw_indir'])
@@ -16,6 +20,8 @@ def nfo_traj(info, *, rncln_re):
     info['nfo_outdir'] = "{idate}/{project}/{run}/{clone}/".format(**info)
     info['nfo_nfoout'] = "{nfo_outdir}/info.json".format(**info)
     os.makedirs(info['nfo_outdir'], exist_ok=True)
+
+    log.debug("NFO: {project} run {run} clone {clone}".format(**info))
     return info
 
 
@@ -40,6 +46,9 @@ def cat_traj(info, *, gen_glob):
     os.makedirs(info['cat_outdir'], exist_ok=True)
 
     fns = glob.glob(gen_glob.format(**info))
+    info['n_intraj'] = len(fns)
+    log.debug("CAT: {project}-{run}-{clone} "
+              "found {n_intraj} trajectories".format(**info))
 
     # Refuse too-short trajectories
     if len(fns) < 2:
