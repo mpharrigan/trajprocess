@@ -52,14 +52,15 @@ def write_infos(infos):
             json.dump(info, f, indent=2)
 
 
-def record(func):
-    def new_func(info):
-        info = func(info)
+class record:
+    def __init__(self, func):
+        self.func = func
+
+    def __call__(self, info):
+        info = self.func(info)
         with open(info['nfo_nfoout'], 'w') as f:
             json.dump(info, f, indent=2)
         return info
-
-    return new_func
 
 
 def process_projects(*projects):
