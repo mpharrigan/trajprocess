@@ -7,12 +7,12 @@ from datetime import date
 
 def nfo_traj(info, *, rncln_re):
     rncln_ma = rncln_re.search(info['raw_indir'])
-    info = {
+    info.update({
         'nfo_indir': os.path.realpath(info['raw_indir']),
         'run': int(rncln_ma.group(1)),
         'clone': int(rncln_ma.group(2)),
         'idate': date.today().isoformat(),
-    }
+    })
     info['nfo_outdir'] = "{idate}/{project}/{run}/{clone}/".format(**info)
     info['nfo_nfoout'] = "{nfo_outdir}".format(**info)
     os.makedirs(info['nfo_outdir'], exist_ok=True)
