@@ -8,7 +8,7 @@ from datetime import date
 def nfo_traj(info, *, rncln_re):
     rncln_ma = rncln_re.search(info['raw_indir'])
     info.update({
-        'nfo_indir': os.path.realpath(info['raw_indir']),
+        'real_raw_indir': os.path.realpath(info['raw_indir']),
         'run': int(rncln_ma.group(1)),
         'clone': int(rncln_ma.group(2)),
         'idate': date.today().isoformat(),
@@ -60,14 +60,14 @@ def cat_traj(info, *, gen_glob):
 def cat_a4(info):
     return cat_traj(
         info,
-        gen_glob="{cat_indir}/frame*.xtc",
+        gen_glob="{raw_indir}/frame*.xtc",
     )
 
 
 def cat_21(info):
     return cat_traj(
         info,
-        gen_glob="{cat_indir}/results-???/positions.xtc",
+        gen_glob="{raw_indir}/results-???/positions.xtc",
     )
 
 
@@ -85,7 +85,7 @@ def cnv_traj(info, *, stride=1, do=True):
     with open(info['cnv_logout'], 'w') as logf:
         popen = subprocess.Popen(
             ['gmx', 'trjconv', '-f', info['cat_xtcout'], '-o',
-             info['cnv_xtcout'], '-s', '{cat_indir}/frame0.tpr'.format(**info),
+             info['cnv_xtcout'], '-s', '{raw_indir}/frame0.tpr'.format(**info),
              '-pbc', 'mol', '-center', '-skip', "{stride}".format(**info)],
             stdin=subprocess.PIPE,
             stdout=logf,
