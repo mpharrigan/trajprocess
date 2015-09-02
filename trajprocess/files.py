@@ -66,7 +66,7 @@ class record:
 def process_projects(*projects):
     for project in projects:
         log.info("Starting project {}".format(project))
-        raw_infos = project.get_infos()
+        raw_infos = list(project.get_infos())
         log.debug("Found {} infos".format(len(raw_infos)))
         with Pool() as pool:
             nfo_infos = pool.map(record(project.nfo), raw_infos)
