@@ -70,8 +70,8 @@ def process_projects(*projects):
         log.debug("Found {} infos".format(len(raw_infos)))
         with Pool() as pool:
             nfo_infos = pool.map(record(project.nfo), raw_infos)
-            cat_infos = pool.map(record(project.cat), nfo_infos)
-            cnv_infos = pool.map(record(project.cnv), cat_infos)
+            cat_infos = pool.map(record(project.cat), nfo_infos, chunksize=1)
+            cnv_infos = pool.map(record(project.cnv), cat_infos, chunksize=1)
 
 
 def main():
