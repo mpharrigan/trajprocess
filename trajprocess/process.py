@@ -81,16 +81,12 @@ def cat_21(info):
     )
 
 
-def cnv_traj(info, *, stride=1, do=True):
+def cnv_traj(info, *, stride=1):
     info['stride'] = stride
     info['cnv_outdir'] = "{cat_outdir}".format(**info)
     info['cnv_xtcout'] = "{cnv_outdir}/cnv.xtc".format(**info)
     info['cnv_logout'] = "{cnv_outdir}/cnv.log".format(**info)
     os.makedirs(info['cnv_outdir'], exist_ok=True)
-
-    if not do:
-        info['cnv_success'] = False
-        return info
 
     with open(info['cnv_logout'], 'w') as logf:
         popen = subprocess.Popen(
@@ -110,11 +106,11 @@ def cnv_traj(info, *, stride=1, do=True):
 
 
 def cnv_21(info):
-    return cnv_traj(
-        info,
-        stride=1,
-        do=False,
-    )
+    info['stride'] = 1
+    info['cnv_outdir'] = "{cat_outdir}".format(**info)
+    info['cnv_xtcout'] = "{cat_xtcout}".format(**info)
+    info['cnv_success'] = False
+    return info
 
 
 def cnv_a4(info):

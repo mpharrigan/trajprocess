@@ -77,7 +77,7 @@ def process_projects(*projects):
 def main():
     return process_projects(
         Project('p9704', 'data/PROJ9704', 'x21'),
-        Project('p9751', 'data/PROJ9751', 'xa4'),
+        Project('p9752', 'data/PROJ9752', 'xa4'),
         # Project('v4', 'data/v4', 'bw'),
         # Project('v5', 'data/v5', 'bw'),
     )
