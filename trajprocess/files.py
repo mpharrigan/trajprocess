@@ -69,9 +69,9 @@ def process_projects(*projects):
         raw_infos = project.get_infos()
         log.debug("Found {} infos".format(len(raw_infos)))
         with Pool() as pool:
-            nfo_infos = pool.imap_unordered(record(project.nfo), raw_infos)
-            cat_infos = pool.imap_unordered(record(project.cat), nfo_infos)
-            cnv_infos = pool.imap_unordered(record(project.cnv), cat_infos)
+            nfo_infos = pool.map(record(project.nfo), raw_infos)
+            cat_infos = pool.map(record(project.cat), nfo_infos)
+            cnv_infos = pool.map(record(project.cnv), cat_infos)
 
 
 def main():

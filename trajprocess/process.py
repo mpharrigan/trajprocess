@@ -10,6 +10,7 @@ log = logging.getLogger(__name__)
 
 
 def nfo_traj(info, *, rncln_re):
+    log.debug("NFO: Entering")
     rncln_ma = rncln_re.search(info['raw_indir'])
     info.update({
         'real_raw_indir': os.path.realpath(info['raw_indir']),
