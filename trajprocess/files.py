@@ -1,9 +1,8 @@
-__author__ = 'harrigan'
-
 from multiprocessing import Pool
 import glob
 import json
 from . import process
+import os
 
 import logging
 
@@ -37,19 +36,14 @@ class Project:
 
     def get_infos(self):
         return (
-            {'project': self.code,
-             'raw_indir': indir}
+            {'raw': {'indir': indir, 'real_indir': os.path.realpath(indir)},
+             'meta': {'project': self.code},
+             }
             for indir in self.get_run_clone_dirs()
         )
 
     def __repr__(self):
         return "{code} ({indir})".format(**self.__dict__)
-
-
-def write_infos(infos):
-    for info in infos:
-        with open(info['nfo_nfoout'], 'w') as f:
-            json.dump(info, f, indent=2)
 
 
 class record:
@@ -58,7 +52,7 @@ class record:
 
     def __call__(self, info):
         info = self.func(info)
-        with open(info['nfo_nfoout'], 'w') as f:
+        with open(info['nfo']['out'], 'w') as f:
             json.dump(info, f, indent=2)
         return info
 

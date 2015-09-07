@@ -10,19 +10,19 @@ log = logging.getLogger(__name__)
 
 
 def nfo_traj(info, *, rncln_re):
-    log.debug("NFO: Entering")
-    rncln_ma = rncln_re.search(info['raw_indir'])
-    info.update({
-        'real_raw_indir': os.path.realpath(info['raw_indir']),
+    rncln_ma = rncln_re.search(info['raw']['indir'])
+    meta = {
+        'project': info['meta']['project'],
         'run': int(rncln_ma.group(1)),
         'clone': int(rncln_ma.group(2)),
-        'idate': date.today().isoformat(),
-    })
-    info['nfo_outdir'] = "{idate}/{project}/{run}/{clone}/".format(**info)
-    info['nfo_nfoout'] = "{nfo_outdir}/info.json".format(**info)
-    os.makedirs(info['nfo_outdir'], exist_ok=True)
+    }
+    path = {'workdir': "processed/{project}/{run}/{clone}".format(**meta)}
+    path['info'] = "{workdir}/info.json".format(**path)
+    info['meta'] = meta
+    info['path'] = path
 
-    log.debug("NFO: {project} run {run} clone {clone}".format(**info))
+    os.makedirs(path['workdir'], exist_ok=True)
+    log.debug("NFO: {project} run {run} clone {clone}".format(**meta))
     return info
 
 
@@ -40,59 +40,77 @@ def nfo_21(info):
     )
 
 
-def cat_traj(info, *, gen_glob):
-    info['cat_outdir'] = "{nfo_outdir}".format(**info)
-    info['cat_xtcout'] = "{cat_outdir}/cat.xtc".format(**info)
-    info['cat_logout'] = "{cat_outdir}/cat.log".format(**info)
-    os.makedirs(info['cat_outdir'], exist_ok=True)
+def cat_traj(info, *, gen_glob, gen_re):
+    cat_info = {
+        'xtc_out': "{workdir}/cat.xtc".format(**info['path']),
+        'log_out': "{workdir}/cat.log".format(**info['path']),
+    }
 
     fns = glob.glob(gen_glob.format(**info))
-    info['n_intraj'] = len(fns)
-    log.debug("CAT: {project}-{run}-{clone} "
-              "found {n_intraj} trajectories".format(**info))
+    gen_re = re.compile(gen_re.format(**info))
+    gens = sorted(int(gen_re.match(fn).group(1)) for fn in fns)
+    cat_info['gen'] = gens[-1] + 1
+
+    info['cat'] = cat_info
+
+    # Make sure gen indexing matches number of files
+    if len(fns) != gens[-1] + 1:
+        info['cat']['n_files'] = len(fns)
+        log.error("CAT: {meta[project]}-{meta[run]}-{meta[clone]} "
+                  "Non contiguous trajectories? "
+                  "By regex: {cat[gen]}. Files: {cat[n_files]}".format(**info))
+        info['cat']['success'] = False
+        return info
+
+    # Give some info
+    log.debug("CAT: {meta[project]}-{meta[run]}-{meta[clone]} "
+              "found {cat[gen]} trajectories".format(**info))
 
     # Refuse too-short trajectories
     if len(fns) < 2:
-        info['cat_success'] = False
+        info['cat']['success'] = False
         return info
 
     # Run trjcat
-    with open(info['cat_logout'], 'w') as logf:
+    with open(info['cat']['log_out'], 'w') as logf:
         subprocess.call(
-            ["gmx", "trjcat", "-f"] + fns + ['-o', info['cat_xtcout']],
+            ["gmx", "trjcat", "-f"] + fns + ['-o', info['cat']['xtc_out']],
             stdout=logf,
             stderr=subprocess.STDOUT
         )
-    info['cat_success'] = True
+    info['cat']['success'] = True
     return info
 
 
 def cat_a4(info):
     return cat_traj(
         info,
-        gen_glob="{raw_indir}/frame*.xtc",
+        gen_glob="{raw[indir]}/frame*.xtc",
+        gen_re="{raw[indir]/frame([0-9]+).xtc",
     )
 
 
 def cat_21(info):
     return cat_traj(
         info,
-        gen_glob="{raw_indir}/results-???/positions.xtc",
+        gen_glob="{raw[indir]}/results-???/positions.xtc",
+        gen_re="{raw[indir]}/results-([0-9]+)/positions.xtc"
     )
 
 
 def cnv_traj(info, *, stride=1):
-    info['stride'] = stride
-    info['cnv_outdir'] = "{cat_outdir}".format(**info)
-    info['cnv_xtcout'] = "{cnv_outdir}/cnv.xtc".format(**info)
-    info['cnv_logout'] = "{cnv_outdir}/cnv.log".format(**info)
-    os.makedirs(info['cnv_outdir'], exist_ok=True)
+    info['cnv'] = {
+        'stride': stride,
+        'xtc_out': "{workdir}/cnv.xtc".format(**info['path']),
+        'log_out': "{workdir}/cnv.log".format(**info['path']),
+    }
 
-    with open(info['cnv_logout'], 'w') as logf:
+    with open(info['cnv']['log_out'], 'w') as logf:
         popen = subprocess.Popen(
-            ['gmx', 'trjconv', '-f', info['cat_xtcout'], '-o',
-             info['cnv_xtcout'], '-s', '{raw_indir}/frame0.tpr'.format(**info),
-             '-pbc', 'mol', '-center', '-skip', "{stride}".format(**info)],
+            ['gmx', 'trjconv', '-f', info['cat']['xtc_out'], '-o',
+             info['cnv']['xtc_out'], '-s',
+             '{raw[indir]}/frame0.tpr'.format(**info), '-pbc', 'mol', '-center',
+             '-skip', "{cnv[stride]}".format(**info)],
             stdin=subprocess.PIPE,
             stdout=logf,
             stderr=subprocess.STDOUT
@@ -101,20 +119,21 @@ def cnv_traj(info, *, stride=1):
         # Output 0 - System
         popen.communicate(b"1\n0")
 
-    info['cnv_success'] = True
+    info['cnv']['success'] = True
     return info
 
 
 def cnv_21(info):
-    info['stride'] = 1
-    info['cnv_outdir'] = "{cat_outdir}".format(**info)
-    info['cnv_xtcout'] = "{cat_xtcout}".format(**info)
-    info['cnv_success'] = False
+    info['cnv'] = {
+        'stride': 1,
+        'xtc_out': "{cat[xtc_out]}".format(**info),
+        'success': False,
+    }
     return info
 
 
 def cnv_a4(info):
-    if info['project'] == 'p9752':
+    if info['meta']['project'] == 'p9752':
         stride = 4
     else:
         stride = 1
