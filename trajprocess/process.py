@@ -47,7 +47,7 @@ def cat_traj(info, *, gen_glob, gen_re):
     }
 
     fns = glob.glob(gen_glob.format(**info))
-    gen_re = re.compile(gen_re.format(**info))
+    gen_re = re.compile(os.path.normpath(gen_re.format(**info)))
     gens = sorted(int(gen_re.match(fn).group(1)) for fn in fns)
     cat_info['gen'] = gens[-1] + 1
 
@@ -86,7 +86,7 @@ def cat_a4(info):
     return cat_traj(
         info,
         gen_glob="{raw[indir]}/frame*.xtc",
-        gen_re="{raw[indir]/frame([0-9]+).xtc",
+        gen_re="{raw[indir]}/frame([0-9]+).xtc",
     )
 
 

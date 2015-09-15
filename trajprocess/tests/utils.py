@@ -8,9 +8,11 @@ from mdtraj.formats import XTCTrajectoryFile
 import shutil
 
 
-def write_traj(path):
+def write_traj(path, i):
+    n_frame = 10
     with XTCTrajectoryFile(path, 'w') as f:
-        f.write(np.random.randn(10, 7, 3))
+        f.write(np.random.randn(n_frame, 7, 3),
+                time=np.arange(n_frame) + n_frame * i)
 
 
 def write_run_clone(wd, proj, run, clone):
@@ -18,8 +20,8 @@ def write_run_clone(wd, proj, run, clone):
                                                               run=run,
                                                               clone=clone)
     os.makedirs(rc)
-    write_traj("{}/frame0.xtc".format(rc))
-    write_traj("{}/frame1.xtc".format(rc))
+    write_traj("{}/frame0.xtc".format(rc), 0)
+    write_traj("{}/frame1.xtc".format(rc), 1)
 
 
 def generate_project():

@@ -12,6 +12,7 @@ log = logging.getLogger(__name__)
 class Project:
     def __init__(self, code, indir, mdtype):
         assert mdtype in ['x21', 'xa4', 'bw']
+        assert indir[-1] != '/', "Don't include the trailing slash!"
 
         self.code = code
         self.indir = indir
