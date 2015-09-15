@@ -84,3 +84,27 @@ def test_nfo_record_pool():
         assert reconstitute == info
         n += 1
     assert n > 0
+
+@with_setup(generate_project, cleanup)
+def test_nfo_step():
+    project = Project("p1234", "data/PROJ1234", 'xa4')
+    raw_infos = list(project.get_infos())
+    with Pool() as pool:
+        nfo_infos = pool.map(record(project.nfo), raw_infos)
+
+    for info in nfo_infos:
+        assert info['meta']['project'] == 'p1234'
+
+        if info['meta']['run'] == 5:
+            assert info['meta']['clone'] == 7
+        elif info['meta']['run'] == 6:
+            assert info['meta']['clone'] == 0
+        else:
+            assert False
+
+        assert os.path.exists(info['path']['workdir'])
+
+        assert set(info.keys()) == {'raw', 'meta', 'path'}
+        assert set(info['raw'].keys()) == {'indir', 'real_indir'}
+        assert set(info['meta'].keys()) == {'project', 'run', 'clone'}
+        assert set(info['path'].keys()) == {'info', 'workdir'}
