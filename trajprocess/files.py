@@ -1,10 +1,12 @@
+"""High-level machinery for running multiple processing steps."""
+
 from multiprocessing import Pool
 import glob
 import json
-from . import process
 import os
-
 import logging
+
+from . import process
 
 log = logging.getLogger(__name__)
 

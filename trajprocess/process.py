@@ -1,8 +1,9 @@
+"""Functions for performing the individual processing steps."""
+
 import subprocess
 import os
 import glob
 import re
-from datetime import date
 
 import logging
 

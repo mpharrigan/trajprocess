@@ -1,11 +1,11 @@
-__author__ = 'harrigan'
+"""Tools for setting up a fake directory structure for processing."""
 
 from tempfile import mkdtemp
+import os
+import shutil
 
 import numpy as np
-import os
 from mdtraj.formats import XTCTrajectoryFile
-import shutil
 
 
 def write_traj(path, i):

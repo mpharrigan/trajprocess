@@ -1,12 +1,11 @@
 import os
+from multiprocessing import Pool
+import json
 
 from nose import with_setup
 
 from trajprocess.files import Project, record
-from multiprocessing import Pool
 from .utils import generate_project, cleanup
-
-import json
 
 
 @with_setup(generate_project, cleanup)
@@ -84,6 +83,7 @@ def test_nfo_record_pool():
         assert reconstitute == info
         n += 1
     assert n > 0
+
 
 @with_setup(generate_project, cleanup)
 def test_nfo_step():

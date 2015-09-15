@@ -1,11 +1,11 @@
-from nose import with_setup
-from .utils import generate_project, cleanup
-
 import re
 import subprocess
 import os
+
+from nose import with_setup
 import mdtraj
 
+from .utils import generate_project, cleanup
 from trajprocess.files import Project, record
 
 
