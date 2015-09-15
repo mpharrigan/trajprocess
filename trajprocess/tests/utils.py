@@ -26,6 +26,7 @@ def generate_project():
     global wd
     wd = mkdtemp()
     write_run_clone(wd, 1234, 5, 7)
+    write_run_clone(wd, 1234, 6, 0)
     os.chdir(wd)
 
 

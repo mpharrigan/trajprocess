@@ -27,7 +27,7 @@ def test_infogen_2():
     proj = Project("p1234", "data/PROJ1234", 'xa4')
     n = 0
     for info in proj.get_infos():
-        assert os.path.exists(info['raw_indir'])
+        assert os.path.exists(info['raw']['indir'])
         n += 1
 
     assert n > 0
@@ -50,8 +50,8 @@ def test_nfo_record():
     assert len(nfo_infos) > 0
 
     for info in nfo_infos:
-        assert os.path.exists(info['nfo_nfoout'])
-        with open(info['nfo_nfoout']) as f:
+        assert os.path.exists(info['path']['info'])
+        with open(info['path']['info']) as f:
             reconstitute = json.load(f)
         assert reconstitute == info
 
@@ -78,8 +78,8 @@ def test_nfo_record_pool():
 
     n = 0
     for info in nfo_infos:
-        assert os.path.exists(info['nfo_nfoout'])
-        with open(info['nfo_nfoout']) as f:
+        assert os.path.exists(info['path']['info'])
+        with open(info['path']['info']) as f:
             reconstitute = json.load(f)
         assert reconstitute == info
         n += 1

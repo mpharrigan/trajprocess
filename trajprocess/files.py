@@ -52,7 +52,7 @@ class record:
 
     def __call__(self, info):
         info = self.func(info)
-        with open(info['nfo']['out'], 'w') as f:
+        with open(info['path']['info'], 'w') as f:
             json.dump(info, f, indent=2)
         return info
 
