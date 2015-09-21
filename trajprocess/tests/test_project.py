@@ -110,6 +110,7 @@ def test_nfo_step():
         assert set(info['path'].keys()) == {'info', 'workdir'}
         assert set(info['top'].keys()) == {'struct', 'fext'}
 
+
 @with_setup(generate_project, cleanup)
 def test_tpr():
     assert os.path.exists("data/PROJ1234/RUN5/CLONE7/frame0.tpr")

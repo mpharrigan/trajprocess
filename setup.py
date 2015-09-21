@@ -6,7 +6,7 @@ setup(
     packages=find_packages(),
     requires=['numpy', 'mdtraj', 'nose'],
     zip_safe=False,
-    package_data = {
+    package_data={
         'trajprocess.tests': ['topol.tpr']
     },
 )
