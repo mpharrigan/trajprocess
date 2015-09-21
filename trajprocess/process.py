@@ -58,6 +58,12 @@ def cat_traj(info, *, gen_glob, gen_re):
     }
 
     fns = glob.glob(gen_glob.format(**info))
+
+    # Refuse too-short trajectories
+    if len(fns) < 2:
+        info['cat']['success'] = False
+        return info
+
     gen_re = re.compile(os.path.normpath(gen_re.format(**info)))
     gens = sorted(int(gen_re.match(fn).group(1)) for fn in fns)
     cat_info['gen'] = gens[-1] + 1
@@ -85,10 +91,6 @@ def cat_traj(info, *, gen_glob, gen_re):
     log.debug("CAT: {meta[project]}-{meta[run]}-{meta[clone]} "
               "found {cat[gen]} trajectories".format(**info))
 
-    # Refuse too-short trajectories
-    if len(fns) < 2:
-        info['cat']['success'] = False
-        return info
 
     # Run trjcat
     with open(info['cat']['log_out'], 'w') as logf:
