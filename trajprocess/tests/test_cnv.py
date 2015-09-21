@@ -10,7 +10,7 @@ from trajprocess.files import Project, record
 
 
 @with_setup(generate_project, cleanup)
-def test_cat():
+def test_cnv():
     project = Project("p1234", "data/PROJ1234", 'xa4')
     raw_infos = list(project.get_infos())
     nfo_infos = list(map(record(project.nfo), raw_infos))

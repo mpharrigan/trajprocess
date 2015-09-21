@@ -5,17 +5,7 @@ import os
 import shutil
 import json
 
-import numpy as np
-from mdtraj.formats import XTCTrajectoryFile
-
 from pkg_resources import resource_filename
-
-
-def write_traj(path, i):
-    n_frame = 10
-    with XTCTrajectoryFile(path, 'w') as f:
-        f.write(np.random.randn(n_frame, 22, 3),
-                time=np.arange(n_frame) + n_frame * i)
 
 
 def write_run_clone(proj, run, clone, gens=None):
@@ -25,11 +15,13 @@ def write_run_clone(proj, run, clone, gens=None):
     rc = "data/PROJ{proj}/RUN{run}/CLONE{clone}/".format(proj=proj, run=run,
                                                          clone=clone)
     os.makedirs(rc, exist_ok=True)
-    for gen in gens:
-        write_traj("{}/frame{}.xtc".format(rc, gen), gen)
-
     tpr_fn = resource_filename(__name__, 'topol.tpr')
     shutil.copy(tpr_fn, "{}/frame0.tpr".format(rc))
+    for gen in gens:
+        shutil.copy(resource_filename(__name__,
+                                      "traj_comp.part{:04d}.xtc".format(
+                                          gen + 1)),
+                    "{}/frame{}.xtc".format(rc, gen))
 
 
 def generate_project():
