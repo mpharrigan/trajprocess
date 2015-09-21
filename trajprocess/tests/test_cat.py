@@ -40,7 +40,8 @@ def test_cat():
         with mdtraj.open(info['cat']['xtc_out']) as tfile:
             xyz, time, step, box = tfile.read()
             print("Shape", xyz.shape)
-            assert xyz.shape == (20, 7, 3)
+            assert xyz.shape == (20, 22, 3)
+
 
 @with_setup(generate_project, cleanup)
 def test_cat_from_existing():
@@ -71,12 +72,11 @@ def test_cat_from_existing():
             with mdtraj.open(info['cat']['xtc_out']) as tfile:
                 xyz, time, step, box = tfile.read()
                 print("Shape", xyz.shape)
-                assert xyz.shape == (30, 7, 3), xyz.shape
+                assert xyz.shape == (30, 22, 3), xyz.shape
         else:
             assert info['cat']['gen'] == 2
             with mdtraj.open(info['cat']['xtc_out']) as tfile:
                 xyz, time, step, box = tfile.read()
                 print("Shape", xyz.shape)
-                assert xyz.shape == (20, 7, 3), xyz.shape
+                assert xyz.shape == (20, 22, 3), xyz.shape
     assert found_one
-
