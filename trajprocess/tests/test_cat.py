@@ -18,7 +18,9 @@ def test_gmx_version():
         .group(1).split(".")
     assert int(maj) == 5
     assert int(min) >= 0
-    assert int(rev) >= 4
+    assert int(rev) >= 6
+    # There is a bug in 5.0.x < 6 where appending with trjcat results in
+    # segfault. http://redmine.gromacs.org/issues/1705
 
 
 @with_setup(generate_project, cleanup)
@@ -40,7 +42,7 @@ def test_cat():
             print("Shape", xyz.shape)
             assert xyz.shape == (20, 7, 3)
 
-@with_setup(generate_project, None)
+@with_setup(generate_project, cleanup)
 def test_cat_from_existing():
     project = Project("p1234", "data/PROJ1234", 'xa4')
     raw_infos = list(project.get_infos())
@@ -69,6 +71,12 @@ def test_cat_from_existing():
             with mdtraj.open(info['cat']['xtc_out']) as tfile:
                 xyz, time, step, box = tfile.read()
                 print("Shape", xyz.shape)
-                assert xyz.shape == (30, 7, 3)
+                assert xyz.shape == (30, 7, 3), xyz.shape
+        else:
+            assert info['cat']['gen'] == 2
+            with mdtraj.open(info['cat']['xtc_out']) as tfile:
+                xyz, time, step, box = tfile.read()
+                print("Shape", xyz.shape)
+                assert xyz.shape == (20, 7, 3), xyz.shape
     assert found_one
 

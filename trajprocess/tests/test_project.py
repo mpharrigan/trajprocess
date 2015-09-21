@@ -104,7 +104,12 @@ def test_nfo_step():
 
         assert os.path.exists(info['path']['workdir'])
 
-        assert set(info.keys()) == {'raw', 'meta', 'path'}
+        assert set(info.keys()) == {'raw', 'meta', 'path', 'top'}, info
         assert set(info['raw'].keys()) == {'indir', 'real_indir'}
         assert set(info['meta'].keys()) == {'project', 'run', 'clone'}
         assert set(info['path'].keys()) == {'info', 'workdir'}
+        assert set(info['top'].keys()) == {'struct', 'fext'}
+
+@with_setup(generate_project, cleanup)
+def test_tpr():
+    assert os.path.exists("data/PROJ1234/RUN5/CLONE7/frame0.tpr")

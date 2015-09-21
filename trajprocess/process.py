@@ -4,6 +4,7 @@ import subprocess
 import os
 import glob
 import re
+import json
 
 import logging
 
@@ -21,6 +22,15 @@ def nfo_traj(info, *, rncln_re):
     path['info'] = "{workdir}/info.json".format(**path)
     info['meta'] = meta
     info['path'] = path
+
+    struct_fn = "structs-{meta[project]}.json".format(**info)
+    try:
+        with open(struct_fn) as f:
+            stru = json.load(f)
+            string_key = str(info['meta']['run'])  # ugh
+            info['top'] = stru[string_key]
+    except Exception as e:
+        log.warning("No structure information. {}".format(e))
 
     os.makedirs(path['workdir'], exist_ok=True)
     log.debug("NFO: {project} run {run} clone {clone}".format(**meta))
@@ -82,8 +92,8 @@ def cat_traj(info, *, gen_glob, gen_re):
 
     # Run trjcat
     with open(info['cat']['log_out'], 'w') as logf:
-        subprocess.call(
-            (["gmx", "trjcat", "-overwrite", "-f"]
+        subprocess.check_call(
+            (["gmx", "trjcat", "-f"]
              + conv_fns + ['-o', info['cat']['xtc_out']]),
             stdout=logf,
             stderr=subprocess.STDOUT
