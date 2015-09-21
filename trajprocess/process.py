@@ -52,6 +52,14 @@ def cat_traj(info, *, gen_glob, gen_re):
     gens = sorted(int(gen_re.match(fn).group(1)) for fn in fns)
     cat_info['gen'] = gens[-1] + 1
 
+    if 'cat' in info and info['cat']['success']:
+        # Set up for appending
+        conv_fns = [fn for fn in fns
+                    if int(gen_re.match(fn).group(1)) >= info['cat']['gen']]
+        conv_fns.append(info['cat']['xtc_out'])
+    else:
+        conv_fns = fns
+
     info['cat'] = cat_info
 
     # Make sure gen indexing matches number of files
@@ -75,7 +83,8 @@ def cat_traj(info, *, gen_glob, gen_re):
     # Run trjcat
     with open(info['cat']['log_out'], 'w') as logf:
         subprocess.call(
-            ["gmx", "trjcat", "-f"] + fns + ['-o', info['cat']['xtc_out']],
+            (["gmx", "trjcat", "-overwrite", "-f"]
+             + conv_fns + ['-o', info['cat']['xtc_out']]),
             stdout=logf,
             stderr=subprocess.STDOUT
         )

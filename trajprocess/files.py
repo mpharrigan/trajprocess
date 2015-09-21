@@ -5,6 +5,7 @@ import glob
 import json
 import os
 import logging
+from pathlib import Path
 
 from . import process
 
@@ -38,12 +39,27 @@ class Project:
             return glob.glob("{}/run-*/".format(self.indir))
 
     def get_infos(self):
-        return (
-            {'raw': {'indir': indir, 'real_indir': os.path.realpath(indir)},
-             'meta': {'project': self.code},
-             }
-            for indir in self.get_run_clone_dirs()
-        )
+        prev = Path("processed/{project}".format(project=self.code))
+        prev_indirs = set()
+        prev_infos = list()
+        for info_fn in prev.glob("**/info.json"):
+            with info_fn.open() as f:
+                info = json.load(f)
+                prev_infos.append(info)
+                prev_indirs.add(info['raw']['indir'])
+
+        new_indirs = set(self.get_run_clone_dirs()) - prev_indirs
+        log.info("Found {} previous directories".format(len(prev_indirs)))
+        log.info("Found {} new directories".format(len(new_indirs)))
+
+        return ([
+                    {'raw': {'indir': indir,
+                             'real_indir': os.path.realpath(indir)},
+                     'meta': {'project': self.code},
+                     }
+                    for indir in new_indirs
+                    ]
+                + prev_infos)
 
     def __repr__(self):
         return "{code} ({indir})".format(**self.__dict__)
@@ -71,7 +87,7 @@ def process_projects(*projects):
             cnv_infos = pool.map(record(project.cnv), cat_infos, chunksize=1)
 
 
-def main():
+def main_nav():
     return process_projects(
         Project('p9704', 'data/PROJ9704', 'x21'),
         Project('p9752', 'data/PROJ9752', 'xa4'),
@@ -80,6 +96,8 @@ def main():
     )
 
 
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
-    main()
+def main_trek():
+    return process_projects(
+        Project('p9712', 'data/PROJ9712', 'x21'),
+        Project('p9761', 'data/PROJ9761', 'xa4'),
+    )
