@@ -8,6 +8,12 @@ import json
 from pkg_resources import resource_filename
 
 
+# command for generating reference data:
+# gmx mdrun -nsteps 5000 -s frame0.tpr -cpi -noappend
+#
+# Do that three times.
+
+
 def write_run_clone(proj, run, clone, gens=None):
     if gens is None:
         gens = [0, 1]
