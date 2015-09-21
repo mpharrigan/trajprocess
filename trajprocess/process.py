@@ -74,6 +74,8 @@ def cat_traj(info, *, gen_glob, gen_re):
         # Set up for appending
         conv_fns = [fn for fn in fns
                     if int(gen_re.match(fn).group(1)) >= info['cat']['gen']]
+        if len(conv_fns) == 0:
+            return info
         conv_fns.append(info['cat']['xtc_out'])
     else:
         conv_fns = fns
