@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="trajprocess",
-    version='0.19',
+    version='0.20',
     packages=find_packages(),
     requires=['numpy', 'mdtraj', 'nose'],
     zip_safe=False,

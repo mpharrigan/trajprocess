@@ -61,6 +61,8 @@ def cat_traj(info, *, gen_glob, gen_re):
 
     # Refuse too-short trajectories
     if len(fns) < 2:
+        if 'cat' not in info:
+            info['cat'] = cat_info
         info['cat']['success'] = False
         return info
 
