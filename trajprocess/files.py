@@ -98,6 +98,6 @@ def main_nav():
 
 def main_trek():
     return process_projects(
-        Project('p9712', 'data/PROJ9712', 'x21'),
-        Project('p9761', 'data/PROJ9761', 'xa4'),
+        Project('p9712', 'PROJ9712', 'x21'),
+        Project('p9761', 'PROJ9761', 'xa4'),
     )
