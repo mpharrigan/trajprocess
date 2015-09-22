@@ -131,6 +131,8 @@ def cnv_traj(info, *, stride=1):
         'log_out': "{workdir}/cnv.log".format(**info['path']),
     }
 
+    log.debug("CNV: {meta[project]}-{meta[run]}-{meta[clone]}".format(**info))
+
     with open(info['cnv']['log_out'], 'w') as logf:
         popen = subprocess.Popen(
             ['gmx', 'trjconv', '-f', info['cat']['xtc_out'], '-o',
