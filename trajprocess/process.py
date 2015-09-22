@@ -161,6 +161,8 @@ def cnv_21(info):
 def cnv_a4(info):
     if info['meta']['project'] == 'p9752':
         stride = 4
+    elif info['meta']['project'] == 'p9761':
+        stride = 8
     else:
         stride = 1
 
