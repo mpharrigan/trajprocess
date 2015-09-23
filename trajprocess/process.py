@@ -155,7 +155,7 @@ def cnv_21(info):
     info['cnv'] = {
         'stride': 1,
         'xtc_out': "{cat[xtc_out]}".format(**info),
-        'success': False,
+        'success': True,
     }
     return info
 
