@@ -91,10 +91,10 @@ def process_projects(*projects):
 
 def main_nav():
     return process_projects(
-        Project('p9704', 'data/PROJ9704', 'x21'),
-        Project('p9752', 'data/PROJ9752', 'xa4'),
-        # Project('v4', 'data/v4', 'bw'),
-        # Project('v5', 'data/v5', 'bw'),
+        Project('p9704', 'PROJ9704', 'x21'),
+        Project('p9752', 'PROJ9752', 'xa4'),
+        Project('v4', 'v4', 'bw'),
+        Project('v5', 'v5', 'bw'),
     )
 
 
