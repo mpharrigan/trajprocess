@@ -19,6 +19,7 @@ def write_run_clone_bw(proj, run, clone, gens=None):
         gens,
         rc="data/{proj}/run-{run}/".format(proj=proj, run=run),
         tfn="{rc}/traj_comp.xtc",
+        topo="{rc}/topol.tpr",
     )
 
 
@@ -27,17 +28,18 @@ def write_run_clone_a4(proj, run, clone, gens=None):
         gens,
         rc="data/PROJ{proj}/RUN{run}/CLONE{clone}/".format(proj=proj, run=run,
                                                            clone=clone),
-        tfn="{rc}/frame{gen}.xtc"
+        tfn="{rc}/frame{gen}.xtc",
+        topo="{rc}/frame0.tpr",
     )
 
 
-def write_run_clone(gens, rc, tfn):
+def write_run_clone(gens, rc, tfn, topo):
     if gens is None:
         gens = [0, 1]
 
     os.makedirs(rc, exist_ok=True)
     tpr_fn = resource_filename(__name__, 'topol.tpr')
-    shutil.copy(tpr_fn, "{}/frame0.tpr".format(rc))
+    shutil.copy(tpr_fn, topo.format(rc=rc))
     for gen in gens:
         shutil.copy(
             resource_filename(__name__,

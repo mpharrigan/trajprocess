@@ -4,7 +4,7 @@ from multiprocessing import Pool
 from nose import with_setup
 
 from trajprocess.files import Project, record
-from .utils import generate_project, cleanup
+from .utils import generate_project, cleanup, generate_bw
 
 
 @with_setup(generate_project, cleanup)
@@ -33,23 +33,25 @@ def test_nfo():
         assert set(info['top'].keys()) == {'struct', 'fext'}
 
 
+@with_setup(generate_bw, cleanup)
 def test_nfo_bw():
     project = Project("v1", "data/v1", 'bw')
     raw_infos = list(project.get_infos())
     with Pool() as pool:
         nfo_infos = pool.map(record(project.nfo), raw_infos)
 
+    assert len(nfo_infos) == 2
+
     for info in nfo_infos:
         assert info['meta']['project'] == 'v1'
 
         if info['meta']['run'] == 5:
-            assert info['meta']['clone'] == 7
+            assert info['meta']['clone'] == 0
         elif info['meta']['run'] == 6:
             assert info['meta']['clone'] == 0
         else:
             assert False
 
-        assert info['meta']['gen'] == 1
         assert os.path.exists(info['path']['workdir'])
 
         assert set(info.keys()) == {'raw', 'meta', 'path', 'top'}, info
