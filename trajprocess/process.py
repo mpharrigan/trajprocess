@@ -131,6 +131,14 @@ def cat_21(info):
         gen_re="{raw[indir]}/results-([0-9]+)/positions.xtc"
     )
 
+def cat_bw(info):
+    info['cat'] = {
+        'success': True,
+        'gen': 1,
+        'xtc_out': "{raw[indir]}/traj_comp.xtc".format(**info)
+    }
+    return info
+
 
 def cnv_traj(info, *, stride=1):
     info['cnv'] = {

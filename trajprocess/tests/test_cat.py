@@ -84,7 +84,6 @@ def test_cat_from_existing():
 
 @with_setup(generate_bw, cleanup)
 def test_cat():
-    return True
     project = Project("v1", "data/v1", 'bw')
     raw_infos = list(project.get_infos())
     nfo_infos = list(map(record(project.nfo), raw_infos))

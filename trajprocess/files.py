@@ -31,7 +31,7 @@ class Project:
             self.cnv = process.cnv_a4
         elif mdtype == 'bw':
             self.nfo = process.nfo_bw
-            self.cat = lambda x: x
+            self.cat = process.cat_bw
             self.cnv = lambda x: x
 
     def get_run_clone_dirs(self):
