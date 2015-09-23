@@ -131,6 +131,7 @@ def cat_21(info):
         gen_re="{raw[indir]}/results-([0-9]+)/positions.xtc"
     )
 
+
 def cat_bw(info):
     info['cat'] = {
         'success': True,
@@ -140,7 +141,7 @@ def cat_bw(info):
     return info
 
 
-def cnv_traj(info, *, stride=1):
+def cnv_traj(info, *, stride, topology):
     info['cnv'] = {
         'stride': stride,
         'xtc_out': "{workdir}/cnv.xtc".format(**info['path']),
@@ -153,7 +154,7 @@ def cnv_traj(info, *, stride=1):
         popen = subprocess.Popen(
             ['gmx', 'trjconv', '-f', info['cat']['xtc_out'], '-o',
              info['cnv']['xtc_out'], '-s',
-             '{raw[indir]}/frame0.tpr'.format(**info), '-pbc', 'mol', '-center',
+             topology, '-pbc', 'mol', '-center',
              '-skip', "{cnv[stride]}".format(**info)],
             stdin=subprocess.PIPE,
             stdout=logf,
@@ -187,4 +188,13 @@ def cnv_a4(info):
     return cnv_traj(
         info,
         stride=stride,
+        topology="{raw[indir]}/frame0.tpr".format(**info),
+    )
+
+
+def cnv_bw(info):
+    return cnv_traj(
+        info,
+        stride=1,
+        topology="{raw[indir]}/topol.tpr".format(**info),
     )
