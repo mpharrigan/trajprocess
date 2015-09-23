@@ -11,12 +11,12 @@ import logging
 log = logging.getLogger(__name__)
 
 
-def nfo_traj(info, *, rncln_re):
+def nfo_traj(info, *, rncln_re, clone=None):
     rncln_ma = rncln_re.search(info['raw']['indir'])
     meta = {
         'project': info['meta']['project'],
         'run': int(rncln_ma.group(1)),
-        'clone': int(rncln_ma.group(2)),
+        'clone': int(rncln_ma.group(2)) if clone is None else clone,
     }
     path = {'workdir': "processed/{project}/{run}/{clone}".format(**meta)}
     path['info'] = "{workdir}/info.json".format(**path)
@@ -48,6 +48,14 @@ def nfo_21(info):
     return nfo_traj(
         info,
         rncln_re=re.compile(r"RUN(\d+)/CLONE(\d+)/"),
+    )
+
+
+def nfo_bw(info):
+    return nfo_traj(
+        info,
+        rncln_re=re.compile(r"run-(\d+)/"),
+        clone=0
     )
 
 

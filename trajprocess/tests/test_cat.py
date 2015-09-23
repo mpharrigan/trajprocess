@@ -5,7 +5,7 @@ import os
 from nose import with_setup
 import mdtraj
 
-from .utils import generate_project, cleanup, write_run_clone
+from .utils import generate_project, cleanup, write_run_clone_a4, generate_bw
 from trajprocess.files import Project, record
 
 
@@ -51,7 +51,7 @@ def test_cat_from_existing():
     cat_infos = list(map(record(project.cat), nfo_infos))
     assert len(cat_infos) > 0
 
-    write_run_clone(1234, 5, 7, gens=[2])
+    write_run_clone_a4(1234, 5, 7, gens=[2])
     os.remove("data/PROJ1234/RUN5/CLONE7/frame0.xtc")
     os.remove("data/PROJ1234/RUN5/CLONE7/frame1.xtc")
     with open("data/PROJ1234/RUN5/CLONE7/frame0.xtc", 'w') as f:
@@ -80,3 +80,24 @@ def test_cat_from_existing():
                 print("Shape", xyz.shape)
                 assert xyz.shape == (21, 22, 3), xyz.shape
     assert found_one
+
+
+@with_setup(generate_bw, cleanup)
+def test_cat():
+    return True
+    project = Project("v1", "data/v1", 'bw')
+    raw_infos = list(project.get_infos())
+    nfo_infos = list(map(record(project.nfo), raw_infos))
+    cat_infos = list(map(record(project.cat), nfo_infos))
+
+    assert len(cat_infos) > 0
+
+    for info in cat_infos:
+        assert info['cat']['gen'] == 1  # per construction
+        assert info['cat']['success']
+        assert os.path.exists(info['cat']['xtc_out'])
+
+        with mdtraj.open(info['cat']['xtc_out']) as tfile:
+            xyz, time, step, box = tfile.read()
+            print("Shape", xyz.shape)
+            assert xyz.shape == (11, 22, 3)
