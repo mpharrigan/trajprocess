@@ -27,7 +27,7 @@ def test_cnv():
 
 
 @with_setup(generate_bw, cleanup)
-def test_cnv():
+def test_cnv_bw():
     project = Project("v1", "data/v1", 'bw')
     raw_infos = list(project.get_infos())
     nfo_infos = list(map(record(project.nfo), raw_infos))
@@ -38,6 +38,7 @@ def test_cnv():
 
     for info in cnv_infos:
         assert os.path.exists(info['cnv']['xtc_out'])
+        assert "cnv.xtc" in info['cnv']['xtc_out'], info['cnv']['xtc_out']
 
         with mdtraj.open(info['cnv']['xtc_out']) as tfile:
             xyz, time, step, box = tfile.read()

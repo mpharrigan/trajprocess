@@ -32,7 +32,7 @@ class Project:
         elif mdtype == 'bw':
             self.nfo = process.nfo_bw
             self.cat = process.cat_bw
-            self.cnv = process.cnv_21
+            self.cnv = process.cnv_bw
 
     def get_run_clone_dirs(self):
         if self.mdtype in ['x21', 'xa4']:
