@@ -7,7 +7,7 @@ import os
 import logging
 from pathlib import Path
 
-from . import process
+from . import process, postprocess
 
 log = logging.getLogger(__name__)
 
@@ -33,6 +33,9 @@ class Project:
             self.nfo = process.nfo_bw
             self.cat = process.cat_bw
             self.cnv = process.cnv_bw
+
+        # TODO
+        self.stp = postprocess.stp_nav
 
     def get_run_clone_dirs(self):
         if self.mdtype in ['x21', 'xa4']:

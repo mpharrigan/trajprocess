@@ -1,4 +1,10 @@
-"""Functions for performing the individual processing steps."""
+"""Functions for performing the individual processing steps.
+
+ - "nfo": Prepare meta-information for each trajectory
+ - "cat": Concatenate trajectory parts
+ - "cnv": Run trjconv for rough, pbc imaging (gromacs runs only)
+
+"""
 
 import subprocess
 import os
