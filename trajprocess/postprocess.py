@@ -20,38 +20,40 @@ def _norm_cpptraj(cpptraj_selection):
         .replace("@", "atm-")
 
 
-def stp_traj(info, *, removes, num_to_removes, topdir, topext="prmtop", trajext='dcd'):
+def stp_traj(info, *, removes, num_to_keeps, topdir, topext="prmtop",
+             trajext='dcd'):
     prevs = [None] + [_norm_cpptraj(remove) for remove in removes]
 
     # Ugh. cpptraj appends names instead of letting you specify the actual
     # out filename. Keep track of these appended names.
     cumprevs = ['.'.join(prevs[1:j][::-1]) for j in range(1, len(prevs))]
 
-    template = Template("""
-    {% if prev is None %}
-    parm {{topdir}}/{{top['struct']}}.{{topext}}
-    trajin {{cnv['xtc_out']}}
-    {% else %}
-    parm {{path['workdir']}}/{{cumprev}}.prmtop
-    trajin {{path['workdir']}}/{{prev}}.{{trajext}}
-    {% endif %}
-    solvent {{remove}}
-    closest {{num}} @CA closestout {{path['workdir']}}/{{curr}}.dat outprefix {{curr}}
-    trajout {{path['workdir']}}/{{curr}}.{{trajext}}
-    """)
+    template = Template("\n".join([
+        "{% if prev is none %}",
+        "parm {{topdir}}/{{top['struct']}}.{{topext}}",
+        "trajin {{cnv['xtc_out']}}",
+        "{% else %}",
+        "parm {{path['workdir']}}/{{cumprev}}.prmtop",
+        "trajin {{path['workdir']}}/{{prev}}.{{trajext}}",
+        "{% endif %}",
+        "solvent {{remove}}",
+        "closest {{num}} @CA closestout {{path['workdir']}}/{{curr}}.dat outprefix {{curr}}",
+        "trajout {{path['workdir']}}/{{curr}}.{{trajext}}",
+        ""
+    ]))
 
-    varszip = zip(removes, prevs, prevs[1:], cumprevs, num_to_removes)
+    varszip = zip(removes, prevs, prevs[1:], cumprevs, num_to_keeps)
     for vars in varszip:
         remove, prev, curr, cumprev, num = vars
-        tmpfile = "{path[workdir]}/cpptraj.{curr}.tmp".format(curr=curr, **info)
-        with open(tmpfile, 'w') as f:
+        workfile = "{path[workdir]}/cpptraj.{curr}.tmp".format(curr=curr, **info)
+        with open(workfile, 'w') as f:
             f.write(template.render(
                 remove=remove, prev=prev, curr=curr, cumprev=cumprev, num=num,
                 topdir=topdir, topext=topext, trajext=trajext, **info
             ))
         subprocess.check_call(
-            ['cpptraj', '-i', 'cpptraj.tmp'],
-            cwd=info['path']['workdir']
+            ['cpptraj', '-i', workfile],
+            #TODO: stdout, stderr redirect
         )
 
     # TODO
@@ -61,6 +63,16 @@ def stp_traj(info, *, removes, num_to_removes, topdir, topext="prmtop", trajext=
 def stp_nav(info):
     return stp_traj(
         info,
-        remove=[":WAT", ":MY", "@Na+", "@Cl-"],
-        num_to_remove=[10000, 100, 20, 20],
+        removes=[":WAT", ":MY", "@Na+", "@Cl-"],
+        num_to_keeps=[10000, 100, 20, 20],
+        topdir="tops-p9704",
+    )
+
+
+def stp_trek(info):
+    return stp_traj(
+        info,
+        removes=[":WAT", "@K+"],
+        num_to_keeps=[10000, 20],
+        topdir="tops-p9712",
     )
