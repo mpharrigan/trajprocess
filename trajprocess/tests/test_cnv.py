@@ -4,7 +4,12 @@ from nose import with_setup
 import mdtraj
 
 from .mock1 import generate_project, cleanup, generate_bw
+from .mock2 import mock_project as mock2, cleanup as cleanup2
 from trajprocess.files import Project, record
+from trajprocess import process
+
+import numpy as np
+import json
 
 
 @with_setup(generate_project, cleanup)
@@ -19,11 +24,16 @@ def test_cnv():
 
     for info in cnv_infos:
         assert os.path.exists(info['cnv']['xtc_out'])
+        assert os.path.exists(info['cnv']['nc_out'])
 
         with mdtraj.open(info['cnv']['xtc_out']) as tfile:
-            xyz, time, step, box = tfile.read()
-            print("Shape", xyz.shape)
-            assert xyz.shape == (21, 22, 3), xyz.shape
+            with mdtraj.open(info['cnv']['nc_out']) as dcdfile:
+                xyz, time, step, box = tfile.read()
+                print("Shape", xyz.shape)
+                assert xyz.shape == (21, 22, 3), xyz.shape
+
+                xyz_nc, time, lengths, angles = dcdfile.read()
+                np.testing.assert_array_equal(xyz * 10, xyz_nc)
 
 
 @with_setup(generate_bw, cleanup)
@@ -44,3 +54,19 @@ def test_cnv_bw():
             xyz, time, step, box = tfile.read()
             print("Shape", xyz.shape)
             assert xyz.shape == (11, 22, 3), xyz.shape
+
+
+@with_setup(mock2, cleanup2)
+def test_cnv_nc():
+    with open("processed/p9761/24/7/info.json") as f:
+        info = json.load(f)
+    process.cnv_to_nc(info)
+
+    top = 'tops-p9712/{top[struct]}.prmtop'.format(**info)
+    trj1 = mdtraj.load(info['cnv']['xtc_out'], top=top)
+    trj2 = mdtraj.load(info['cnv']['nc_out'], top=top)
+
+    np.testing.assert_array_almost_equal(trj1.xyz, trj2.xyz)
+    np.testing.assert_array_almost_equal(trj1.unitcell_vectors,
+                                         trj2.unitcell_vectors)
+    np.testing.assert_array_almost_equal(trj1.time, trj2.time)

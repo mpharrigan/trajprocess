@@ -12,6 +12,10 @@ import glob
 import re
 import json
 
+from mdtraj.formats import XTCTrajectoryFile, NetCDFTrajectoryFile
+import mdtraj.utils
+import numpy as np
+
 import logging
 
 log = logging.getLogger(__name__)
@@ -174,13 +178,38 @@ def cnv_traj(info, *, stride, topology):
     return info
 
 
+def _do_a_chunk(xtc, nc, chunk):
+    xyz, time, step, box = xtc.read(chunk)
+    al, bl, cl, alpha, beta, gamma = \
+        mdtraj.utils.box_vectors_to_lengths_and_angles(
+            box[:, 0, :], box[:, 1, :], box[:, 2, :]
+        )
+    nc.write(
+        xyz * 10,
+        time,
+        np.asarray([al, bl, cl]).T * 10,
+        np.asarray([alpha, beta, gamma]).T
+    )
+
+
+def cnv_to_nc(info, *, chunk=100):
+    info['cnv']['nc_out'] = '{workdir}/cnv.nc'.format(**info['path'])
+    with XTCTrajectoryFile(info['cnv']['xtc_out'], 'r') as xtc:
+        with NetCDFTrajectoryFile(info['cnv']['nc_out'], 'w') as nc:
+            for chunki in range(len(xtc) // chunk):
+                _do_a_chunk(xtc, nc, chunk)
+            _do_a_chunk(xtc, nc, chunk=None)
+
+    return info
+
+
 def cnv_21(info):
     info['cnv'] = {
         'stride': 1,
         'xtc_out': "{cat[xtc_out]}".format(**info),
         'success': True,
     }
-    return info
+    return cnv_to_nc(info)
 
 
 def cnv_a4(info):
@@ -191,10 +220,13 @@ def cnv_a4(info):
     else:
         stride = 1
 
-    return cnv_traj(
+    info = cnv_traj(
         info,
         stride=stride,
         topology="{raw[indir]}/frame0.tpr".format(**info),
+    )
+    return cnv_to_nc(
+        info
     )
 
 

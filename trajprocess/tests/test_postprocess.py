@@ -37,4 +37,5 @@ def test_stp():
     with open("processed/p9761/24/7/info.json") as f:
         info = json.load(f)
 
+    assert False
     trajprocess.postprocess.stp_trek(info)
