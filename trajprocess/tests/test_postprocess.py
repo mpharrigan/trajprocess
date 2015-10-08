@@ -1,10 +1,15 @@
 from trajprocess.postprocess import _norm_cpptraj
+import trajprocess.postprocess
 import os
 
 from nose import with_setup
 import mdtraj
-from .utils import generate_project, cleanup, generate_bw
 from trajprocess.files import Project, record
+import subprocess
+
+from .mock2 import mock_project, cleanup
+
+import json
 
 
 def test_norm_cpptraj():
@@ -14,21 +19,14 @@ def test_norm_cpptraj():
     assert _norm_cpptraj("@Cl-") == "atm-cl-min"
 
 
-@with_setup(generate_project, cleanup)
-def test_stp():
-    project = Project("p1234", "data/PROJ1234", 'xa4')
-    raw_infos = list(project.get_infos())
-    nfo_infos = list(map(record(project.nfo), raw_infos))
-    cat_infos = list(map(record(project.cat), nfo_infos))
-    cnv_infos = list(map(record(project.cnv), cat_infos))
-    stp_infos = list(map(record(project.stp), cnv_infos))
+def test_cpptraj_exists():
+    subprocess.check_call(['cpptraj', '--version'], stdout=subprocess.DEVNULL)
 
-    assert len(stp_infos) > 0
 
-    for info in stp_infos:
-        assert os.path.exists(info['stp']['xtc_out'])
+@with_setup(mock_project, cleanup)
+def test_mock2():
+    assert os.path.exists("processed")
+    with open("processed/p9761/24/7/info.json") as f:
+        info = json.load(f)
 
-        with mdtraj.open(info['stp']['xtc_out']) as tfile:
-            xyz, time, step, box = tfile.read()
-            print("Shape", xyz.shape)
-            assert xyz.shape == (21, 22, 3), xyz.shape
+    assert os.path.exists(info['cnv']['xtc_out'])

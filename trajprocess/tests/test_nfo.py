@@ -4,7 +4,7 @@ from multiprocessing import Pool
 from nose import with_setup
 
 from trajprocess.files import Project, record
-from .utils import generate_project, cleanup, generate_bw
+from .mock1 import generate_project, cleanup, generate_bw
 
 
 @with_setup(generate_project, cleanup)

@@ -5,7 +5,7 @@ import json
 from nose import with_setup
 
 from trajprocess.files import Project, record
-from .utils import generate_project, cleanup
+from .mock1 import generate_project, cleanup
 
 
 @with_setup(generate_project, cleanup)

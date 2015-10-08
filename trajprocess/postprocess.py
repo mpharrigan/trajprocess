@@ -20,33 +20,39 @@ def _norm_cpptraj(cpptraj_selection):
         .replace("@", "atm-")
 
 
-def stp_traj(info, *, remove, num_to_remove):
-    prevs = [""] + [_norm_cpptraj(sel) for sel in remove]
+def stp_traj(info, *, removes, num_to_removes, topdir, topext="prmtop", trajext='dcd'):
+    prevs = [None] + [_norm_cpptraj(remove) for remove in removes]
 
     # Ugh. cpptraj appends names instead of letting you specify the actual
     # out filename. Keep track of these appended names.
-    cumprev = ['.'.join(prevs[1:j][::-1]) for j in range(1, len(prevs))]
+    cumprevs = ['.'.join(prevs[1:j][::-1]) for j in range(1, len(prevs))]
 
     template = Template("""
-    {% if prev == '' %}
-    parm {{i}}.prmtop
-    trajin {{i}}.rst7
+    {% if prev is None %}
+    parm {{topdir}}/{{top['struct']}}.{{topext}}
+    trajin {{cnv['xtc_out']}}
     {% else %}
-    parm {{cprev}}.{{i}}.prmtop
-    trajin {{prev}}.{{i}}.rst7
+    parm {{path['workdir']}}/{{cumprev}}.prmtop
+    trajin {{path['workdir']}}/{{prev}}.{{trajext}}
     {% endif %}
-    solvent {{rem}}
-    closest {{num}} @CA closestout {{cur}}.{{i}}.dat outprefix {{cur}}
-    trajout {{cur}}.{{i}}.rst7
+    solvent {{remove}}
+    closest {{num}} @CA closestout {{path['workdir']}}/{{curr}}.dat outprefix {{curr}}
+    trajout {{path['workdir']}}/{{curr}}.{{trajext}}
     """)
-    for i in range(len(prevs)):
-        for rem, prev, cprev, cur, num in zip(remove, prevs, cumprev,
-                                              prevs[1:], num_to_remove):
-            with open("cpptraj.tmp", 'w') as f:
-                f.write(template.render(i=i, rem=rem,
-                                        prev=prev, cprev=cprev,
-                                        cur=cur, num=num))
-            subprocess.check_call(['cpptraj', '-i', 'cpptraj.tmp'])
+
+    varszip = zip(removes, prevs, prevs[1:], cumprevs, num_to_removes)
+    for vars in varszip:
+        remove, prev, curr, cumprev, num = vars
+        tmpfile = "{path[workdir]}/cpptraj.{curr}.tmp".format(curr=curr, **info)
+        with open(tmpfile, 'w') as f:
+            f.write(template.render(
+                remove=remove, prev=prev, curr=curr, cumprev=cumprev, num=num,
+                topdir=topdir, topext=topext, trajext=trajext, **info
+            ))
+        subprocess.check_call(
+            ['cpptraj', '-i', 'cpptraj.tmp'],
+            cwd=info['path']['workdir']
+        )
 
     # TODO
     return info

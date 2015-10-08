@@ -3,7 +3,7 @@ import os
 from nose import with_setup
 import mdtraj
 
-from .utils import generate_project, cleanup, generate_bw
+from .mock1 import generate_project, cleanup, generate_bw
 from trajprocess.files import Project, record
 
 
