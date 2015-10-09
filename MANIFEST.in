@@ -1,0 +1,3 @@
+recursive-include trajprocess/tests/mock2-reference *
+include trajprocess/tests/topol.tpr
+include trajprocess/tests/*.xtc
