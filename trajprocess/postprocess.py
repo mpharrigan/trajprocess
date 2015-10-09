@@ -93,8 +93,8 @@ def stp_traj(info, *, removes, num_to_keeps, topdir, topext="prmtop",
 
     # Tar up workdir
     subprocess.check_call(
-        ['tar', '-czf', info['stp']['cpp_archive'], info['stp']['cpp_workdir']]
-        # TODO: stdout, stderr
+        ['tar', '-czf', info['stp']['cpp_archive'], info['stp']['cpp_workdir']],
+        stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL
     )
 
     # Clean up workdir
@@ -122,4 +122,31 @@ def stp_trek(info):
 
 
 def ctr_traj(info):
-    pass
+    info['ctr'] = {
+        'nc_out': "{workdir}/ctr.nc".format(**info['path']),
+        'log_out': "{workdir}/ctr.log".format(**info['path']),
+        'prmtop': info['stp']['prmtop'],
+    }
+
+    template = "\n".join([
+        "parm {stp[prmtop]}",
+        "trajin {stp[nc_out]}",
+        "autoimage",
+        "center @CA",
+        "image",
+        "trajout {ctr[nc_out]}",
+        "",
+    ])
+
+    workfile = "{workdir}/cpptraj.tmp".format(**info['path'])
+    with open(workfile, 'w') as f:
+        f.write(template.format(**info))
+
+    with open(info['ctr']['log_out'], 'w') as logf:
+        subprocess.check_call(
+            ['cpptraj', '-i', workfile],
+            stderr=subprocess.STDOUT, stdout=logf
+        )
+
+    os.remove(workfile)
+    return info
