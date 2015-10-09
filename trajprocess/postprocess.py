@@ -24,6 +24,10 @@ def _norm_cpptraj(cpptraj_selection):
 
 def stp_traj(info, *, removes, num_to_keeps, topdir, topext="prmtop",
              trajext='nc'):
+    if not info['cnv']['success']:
+        info['stp'] = {'success': False}
+        return info
+
     prevs = [None] + [_norm_cpptraj(remove) for remove in removes]
 
     # Ugh. cpptraj appends names instead of letting you specify the actual
@@ -122,6 +126,10 @@ def stp_trek(info):
 
 
 def ctr_traj(info):
+    if not info['stp']['success']:
+        info['ctr'] = {'success': False}
+        return info
+
     info['ctr'] = {
         'nc_out': "{workdir}/ctr.nc".format(**info['path']),
         'log_out': "{workdir}/ctr.log".format(**info['path']),

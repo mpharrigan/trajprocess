@@ -172,6 +172,11 @@ def cnv_traj(info, *, stride, topology):
         # Center based on 1 - Protein
         # Output 0 - System
         popen.communicate(b"1\n0")
+        popen.wait()
+
+        if popen.returncode != 0:
+            raise RuntimeError("Non-zero exit code from trjconv {}"
+                               .format(popen.returncode))
 
     info['cnv']['success'] = True
     return info
@@ -203,6 +208,9 @@ def cnv_to_nc(info, *, chunk=100):
 
 
 def cnv_21(info):
+    if not info['cat']['success']:
+        info['cnv'] = {'success': False}
+        return info
     info['cnv'] = {
         'stride': 1,
         'xtc_out': "{cat[xtc_out]}".format(**info),
@@ -212,6 +220,9 @@ def cnv_21(info):
 
 
 def cnv_a4(info):
+    if not info['cat']['success']:
+        info['cnv'] = {'success': False}
+        return info
     if info['meta']['project'] == 'p9752':
         stride = 4
     elif info['meta']['project'] == 'p9761':
@@ -230,6 +241,9 @@ def cnv_a4(info):
 
 
 def cnv_bw(info):
+    if not info['cat']['success']:
+        info['cnv'] = {'success': False}
+        return info
     return cnv_traj(
         info,
         stride=1,
