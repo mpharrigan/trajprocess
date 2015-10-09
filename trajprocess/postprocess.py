@@ -9,8 +9,11 @@ import subprocess
 import os
 import shutil
 import glob
+import logging
 
 from jinja2 import Template
+
+log = logging.getLogger(__name__)
 
 
 def _norm_cpptraj(cpptraj_selection):
@@ -26,8 +29,12 @@ def stp_traj(info, *, removes, num_to_keeps, topdir, topext="prmtop",
              trajext='nc'):
     if not info['cnv']['success']:
         info['stp'] = {'success': False}
+        log.debug("STP: {meta[project]}-{meta[run]}-{meta[clone]}. No input"
+                  .format(**info))
         return info
 
+    log.debug("STP: {meta[project]}-{meta[run]}-{meta[clone]}. Doing"
+              .format(**info))
     prevs = [None] + [_norm_cpptraj(remove) for remove in removes]
 
     # Ugh. cpptraj appends names instead of letting you specify the actual
@@ -104,6 +111,8 @@ def stp_traj(info, *, removes, num_to_keeps, topdir, topext="prmtop",
     # Clean up workdir
     shutil.rmtree(info['stp']['cpp_workdir'])
 
+    info['stp']['success'] = True
+
     return info
 
 
@@ -128,8 +137,12 @@ def stp_trek(info):
 def ctr_traj(info):
     if not info['stp']['success']:
         info['ctr'] = {'success': False}
+        log.debug("CTR: {meta[project]}-{meta[run]}-{meta[clone]}. No input"
+                  .format(**info))
         return info
 
+    log.debug("CTR: {meta[project]}-{meta[run]}-{meta[clone]}. Doing"
+              .format(**info))
     info['ctr'] = {
         'nc_out': "{workdir}/ctr.nc".format(**info['path']),
         'log_out': "{workdir}/ctr.log".format(**info['path']),
@@ -157,4 +170,5 @@ def ctr_traj(info):
         )
 
     os.remove(workfile)
+    info['ctr']['success'] = True
     return info

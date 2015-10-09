@@ -150,14 +150,30 @@ def cat_bw(info):
     return info
 
 
-def cnv_traj(info, *, stride, topology):
+def cnv_traj(info, *, stride, topology, skip=False):
+    if not info['cat']['success']:
+        info['cnv'] = {'success': False}
+        log.debug("CNV: {meta[project]}-{meta[run]}-{meta[clone]}. No input"
+                  .format(**info))
+        return info
+
+    if skip:
+        info['cnv'] = {
+            'stride': stride,
+            'xtc_out': "{cat[xtc_out]}".format(**info),
+            'success': True,
+        }
+        log.debug("CNV: {meta[project]}-{meta[run]}-{meta[clone]}. Skipping"
+                  .format(**info))
+        return info
+
     info['cnv'] = {
         'stride': stride,
         'xtc_out': "{workdir}/cnv.xtc".format(**info['path']),
         'log_out': "{workdir}/cnv.log".format(**info['path']),
     }
-
-    log.debug("CNV: {meta[project]}-{meta[run]}-{meta[clone]}".format(**info))
+    log.debug("CNV: {meta[project]}-{meta[run]}-{meta[clone]}. Doing"
+              .format(**info))
 
     with open(info['cnv']['log_out'], 'w') as logf:
         popen = subprocess.Popen(
@@ -178,12 +194,14 @@ def cnv_traj(info, *, stride, topology):
             raise RuntimeError("Non-zero exit code from trjconv {}"
                                .format(popen.returncode))
 
+    info = cnv_to_nc(info)
     info['cnv']['success'] = True
     return info
 
 
 def _do_a_chunk(xtc, nc, chunk):
     xyz, time, step, box = xtc.read(chunk)
+    assert box.ndim == 3, box.ndim
     al, bl, cl, alpha, beta, gamma = \
         mdtraj.utils.box_vectors_to_lengths_and_angles(
             box[:, 0, :], box[:, 1, :], box[:, 2, :]
@@ -197,6 +215,8 @@ def _do_a_chunk(xtc, nc, chunk):
 
 
 def cnv_to_nc(info, *, chunk=100):
+    log.debug("CNV: {meta[project]}-{meta[run]}-{meta[clone]}. Converting to nc"
+              .format(**info))
     info['cnv']['nc_out'] = '{workdir}/cnv.nc'.format(**info['path'])
     with XTCTrajectoryFile(info['cnv']['xtc_out'], 'r') as xtc:
         with NetCDFTrajectoryFile(info['cnv']['nc_out'], 'w') as nc:
@@ -208,21 +228,15 @@ def cnv_to_nc(info, *, chunk=100):
 
 
 def cnv_21(info):
-    if not info['cat']['success']:
-        info['cnv'] = {'success': False}
-        return info
-    info['cnv'] = {
-        'stride': 1,
-        'xtc_out': "{cat[xtc_out]}".format(**info),
-        'success': True,
-    }
-    return cnv_to_nc(info)
+    return cnv_traj(
+        info,
+        stride=1,
+        topology="",
+        skip=True
+    )
 
 
 def cnv_a4(info):
-    if not info['cat']['success']:
-        info['cnv'] = {'success': False}
-        return info
     if info['meta']['project'] == 'p9752':
         stride = 4
     elif info['meta']['project'] == 'p9761':
@@ -230,20 +244,14 @@ def cnv_a4(info):
     else:
         stride = 1
 
-    info = cnv_traj(
+    return cnv_traj(
         info,
         stride=stride,
         topology="{raw[indir]}/frame0.tpr".format(**info),
     )
-    return cnv_to_nc(
-        info
-    )
 
 
 def cnv_bw(info):
-    if not info['cat']['success']:
-        info['cnv'] = {'success': False}
-        return info
     return cnv_traj(
         info,
         stride=1,
