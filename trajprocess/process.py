@@ -11,12 +11,11 @@ import os
 import glob
 import re
 import json
+import logging
 
 from mdtraj.formats import XTCTrajectoryFile, NetCDFTrajectoryFile
 import mdtraj.utils
 import numpy as np
-
-import logging
 
 log = logging.getLogger(__name__)
 

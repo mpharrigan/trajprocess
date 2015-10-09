@@ -1,1 +1,3 @@
+nose
+mdtraj
 jinja2
