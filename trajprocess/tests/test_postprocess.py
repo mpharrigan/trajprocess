@@ -32,10 +32,10 @@ def test_mock2():
     assert os.path.exists(info['cnv']['xtc_out'])
 
 
-@with_setup(mock_project, None)
+@with_setup(mock_project, cleanup)
 def test_stp():
     with open("processed/p9761/24/7/info.json") as f:
         info = json.load(f)
+    info['cnv']['nc_out'] = "{workdir}/cnv.nc".format(**info['path'])
 
-    assert False
     trajprocess.postprocess.stp_trek(info)

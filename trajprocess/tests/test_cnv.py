@@ -11,6 +11,8 @@ from trajprocess import process
 import numpy as np
 import json
 
+import subprocess
+
 
 @with_setup(generate_project, cleanup)
 def test_cnv():
@@ -58,6 +60,7 @@ def test_cnv_bw():
 
 @with_setup(mock2, cleanup2)
 def test_cnv_nc():
+    os.remove("processed/p9761/24/7/cnv.nc")
     with open("processed/p9761/24/7/info.json") as f:
         info = json.load(f)
     process.cnv_to_nc(info)
@@ -70,3 +73,28 @@ def test_cnv_nc():
     np.testing.assert_array_almost_equal(trj1.unitcell_vectors,
                                          trj2.unitcell_vectors)
     np.testing.assert_array_almost_equal(trj1.time, trj2.time)
+
+
+@with_setup(mock2, None)
+def test_nc_cpptraj():
+    os.remove("processed/p9761/24/7/cnv.nc")
+    with open("processed/p9761/24/7/info.json") as f:
+        info = json.load(f)
+    process.cnv_to_nc(info)
+
+    top = 'tops-p9712/{top[struct]}.prmtop'.format(**info)
+    out = "{workdir}/test.nc".format(**info['path'])
+    subprocess.check_call([
+        'cpptraj',
+        '-p', top,
+        '-y', info['cnv']['nc_out'],
+        '-x', out
+    ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    trj1 = mdtraj.load(out, top=top)
+    trj2 = mdtraj.load(info['cnv']['nc_out'], top=top)
+
+    np.testing.assert_array_almost_equal(trj1.xyz, trj2.xyz)
+    np.testing.assert_array_almost_equal(trj1.unitcell_vectors,
+                                         trj2.unitcell_vectors)
+    #np.testing.assert_array_almost_equal(trj1.time, trj2.time)

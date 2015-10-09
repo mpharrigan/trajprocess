@@ -21,7 +21,7 @@ def _norm_cpptraj(cpptraj_selection):
 
 
 def stp_traj(info, *, removes, num_to_keeps, topdir, topext="prmtop",
-             trajext='dcd'):
+             trajext='nc'):
     prevs = [None] + [_norm_cpptraj(remove) for remove in removes]
 
     # Ugh. cpptraj appends names instead of letting you specify the actual
@@ -31,7 +31,7 @@ def stp_traj(info, *, removes, num_to_keeps, topdir, topext="prmtop",
     template = Template("\n".join([
         "{% if prev is none %}",
         "parm {{topdir}}/{{top['struct']}}.{{topext}}",
-        "trajin {{cnv['xtc_out']}}",
+        "trajin {{cnv['nc_out']}}",
         "{% else %}",
         "parm {{path['workdir']}}/{{cumprev}}.prmtop",
         "trajin {{path['workdir']}}/{{prev}}.{{trajext}}",
@@ -45,7 +45,9 @@ def stp_traj(info, *, removes, num_to_keeps, topdir, topext="prmtop",
     varszip = zip(removes, prevs, prevs[1:], cumprevs, num_to_keeps)
     for vars in varszip:
         remove, prev, curr, cumprev, num = vars
-        workfile = "{path[workdir]}/cpptraj.{curr}.tmp".format(curr=curr, **info)
+        workfile = "{path[workdir]}/cpptraj.{curr}.tmp"
+        workfile = workfile.format(curr=curr, **info)
+
         with open(workfile, 'w') as f:
             f.write(template.render(
                 remove=remove, prev=prev, curr=curr, cumprev=cumprev, num=num,
@@ -53,7 +55,7 @@ def stp_traj(info, *, removes, num_to_keeps, topdir, topext="prmtop",
             ))
         subprocess.check_call(
             ['cpptraj', '-i', workfile],
-            #TODO: stdout, stderr redirect
+            # TODO: stdout, stderr redirect
         )
 
     # TODO
