@@ -79,6 +79,7 @@ class record:
 
 
 def process_projects(*projects):
+    infos = []
     for project in projects:
         log.info("Starting project {}".format(project))
         raw_infos = list(project.get_infos())
@@ -87,6 +88,26 @@ def process_projects(*projects):
             nfo_infos = pool.map(record(project.nfo), raw_infos)
             cat_infos = pool.map(record(project.cat), nfo_infos, chunksize=1)
             cnv_infos = pool.map(record(project.cnv), cat_infos, chunksize=1)
+        infos += cnv_infos
+    return infos
+
+
+class Postprocess:
+    def __init__(self, system):
+        if system == 'nav':
+            raise NotImplementedError
+        elif system == 'trek':
+            self.stp = postprocess.stp_trek
+            self.ctr = postprocess.ctr_traj
+        else:
+            raise ValueError("Invalid system")
+
+
+def process_post(postprocessor, cnv_infos):
+    with Pool() as pool:
+        stp_infos = pool.map(record(postprocessor.stp), cnv_infos, chunksize=1)
+        ctr_infos = pool.map(record(postprocessor.ctr), stp_infos, chunksize=1)
+    return ctr_infos
 
 
 def main_nav():
@@ -99,7 +120,8 @@ def main_nav():
 
 
 def main_trek():
-    return process_projects(
+    infos = process_projects(
         Project('p9712', 'PROJ9712', 'x21'),
         Project('p9761', 'PROJ9761', 'xa4'),
     )
+    return process_post(Postprocess('trek'), infos)

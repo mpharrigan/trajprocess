@@ -9,6 +9,7 @@ import mdtraj
 
 from trajprocess.postprocess import _norm_cpptraj
 import trajprocess.postprocess
+from trajprocess.files import Postprocess, process_post
 from .mock2 import mock_project, cleanup
 
 
@@ -32,7 +33,7 @@ def test_mock2():
     assert os.path.exists(info['cnv']['xtc_out'])
 
 
-@with_setup(mock_project, None)
+@with_setup(mock_project, cleanup)
 def test_trek():
     # setup
     with open("processed/p9761/24/7/info.json") as f:
@@ -70,3 +71,22 @@ def test_trek():
     cont2, _ = mdtraj.compute_contacts(traj2, pairs)
 
     np.testing.assert_array_almost_equal(cont1, cont2, decimal=4)
+
+
+@with_setup(mock_project, None)
+def test_process_post():
+    # setup
+    with open("processed/p9761/24/7/info.json") as f:
+        info = json.load(f)
+    info['cnv']['nc_out'] = "{workdir}/cnv.nc".format(**info['path'])
+    infos = [info]
+
+    infos = process_post(Postprocess('trek'), infos)
+    info, *_ = infos
+    traj = mdtraj.load(info['ctr']['nc_out'], top=info['ctr']['prmtop'])
+    assert traj.n_atoms == 30962
+
+    with open("processed/p9761/24/7/info.json") as f:
+        disk_info = json.load(f)
+
+    assert disk_info == info
