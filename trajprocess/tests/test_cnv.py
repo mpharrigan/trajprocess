@@ -75,7 +75,7 @@ def test_cnv_nc():
     np.testing.assert_array_almost_equal(trj1.time, trj2.time)
 
 
-@with_setup(mock2, None)
+@with_setup(mock2, cleanup)
 def test_nc_cpptraj():
     os.remove("processed/p9761/24/7/cnv.nc")
     with open("processed/p9761/24/7/info.json") as f:
