@@ -63,7 +63,7 @@ def test_cnv_nc():
     os.remove("processed/p9761/24/7/cnv.nc")
     with open("processed/p9761/24/7/info.json") as f:
         info = json.load(f)
-    process.cnv_to_nc(info)
+    process.cnv_to_nc(info, chunk=2)
 
     top = 'tops-p9712/{top[struct]}.prmtop'.format(**info)
     trj1 = mdtraj.load(info['cnv']['xtc_out'], top=top)
@@ -75,12 +75,12 @@ def test_cnv_nc():
     np.testing.assert_array_almost_equal(trj1.time, trj2.time)
 
 
-@with_setup(mock2, cleanup)
+@with_setup(mock2, cleanup2)
 def test_nc_cpptraj():
     os.remove("processed/p9761/24/7/cnv.nc")
     with open("processed/p9761/24/7/info.json") as f:
         info = json.load(f)
-    process.cnv_to_nc(info)
+    process.cnv_to_nc(info, chunk=2)
 
     top = 'tops-p9712/{top[struct]}.prmtop'.format(**info)
     out = "{workdir}/test.nc".format(**info['path'])
