@@ -150,7 +150,7 @@ def cat_bw(info):
     return info
 
 
-def cnv_traj(info, *, stride, topology, skip=False):
+def cnv_traj(info, *, stride, topology, skip=False, chunk=100):
     if not info['cat']['success']:
         info['cnv'] = {'success': False}
         log.debug("CNV: {meta[project]}-{meta[run]}-{meta[clone]}. No input"
@@ -165,7 +165,7 @@ def cnv_traj(info, *, stride, topology, skip=False):
         }
         log.debug("CNV: {meta[project]}-{meta[run]}-{meta[clone]}. Skipping"
                   .format(**info))
-        return info
+        return cnv_to_nc(info, chunk=chunk)
 
     info['cnv'] = {
         'stride': stride,
@@ -194,9 +194,7 @@ def cnv_traj(info, *, stride, topology, skip=False):
             raise RuntimeError("Non-zero exit code from trjconv {}"
                                .format(popen.returncode))
 
-    info = cnv_to_nc(info)
-    info['cnv']['success'] = True
-    return info
+    return cnv_to_nc(info, chunk=chunk)
 
 
 def _do_a_chunk(xtc, nc, chunk):
@@ -214,7 +212,7 @@ def _do_a_chunk(xtc, nc, chunk):
     )
 
 
-def cnv_to_nc(info, *, chunk=100):
+def cnv_to_nc(info, *, chunk):
     log.debug("CNV: {meta[project]}-{meta[run]}-{meta[clone]}. Converting to nc"
               .format(**info))
     info['cnv']['nc_out'] = '{workdir}/cnv.nc'.format(**info['path'])
@@ -224,6 +222,7 @@ def cnv_to_nc(info, *, chunk=100):
                 _do_a_chunk(xtc, nc, chunk)
             _do_a_chunk(xtc, nc, chunk=None)
 
+    info['cnv']['success'] = True
     return info
 
 
