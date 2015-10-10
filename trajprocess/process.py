@@ -218,9 +218,12 @@ def cnv_to_nc(info, *, chunk):
     info['cnv']['nc_out'] = '{workdir}/cnv.nc'.format(**info['path'])
     with XTCTrajectoryFile(info['cnv']['xtc_out'], 'r') as xtc:
         with NetCDFTrajectoryFile(info['cnv']['nc_out'], 'w') as nc:
-            for chunki in range(len(xtc) // chunk):
+            tot_frames = len(xtc)
+            for _ in range(tot_frames // chunk):
                 _do_a_chunk(xtc, nc, chunk)
-            _do_a_chunk(xtc, nc, chunk=None)
+
+            if tot_frames % chunk != 0:
+                _do_a_chunk(xtc, nc, chunk=None)
 
     info['cnv']['success'] = True
     return info
