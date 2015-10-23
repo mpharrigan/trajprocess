@@ -6,6 +6,7 @@ import json
 import os
 import logging
 from pathlib import Path
+from datetime import datetime
 
 from . import process, postprocess
 
@@ -21,18 +22,9 @@ class Project:
         self.indir = indir
         self.mdtype = mdtype
 
-        if mdtype == 'x21':
-            self.nfo = process.nfo_21
-            self.cat = process.cat_21
-            self.cnv = process.cnv_21
-        elif mdtype == 'xa4':
-            self.nfo = process.nfo_a4
-            self.cat = process.cat_a4
-            self.cnv = process.cnv_a4
-        elif mdtype == 'bw':
-            self.nfo = process.nfo_bw
-            self.cat = process.cat_bw
-            self.cnv = process.cnv_bw
+        self.nfo = lambda x: process.nfo(x, mdtype)
+        self.cnv1 = lambda x: process.cnv1(x, mdtype)
+        self.cnv2 = lambda x: process.cnv2(x, mdtype)
 
     def get_run_clone_dirs(self):
         if self.mdtype in ['x21', 'xa4']:
@@ -54,13 +46,14 @@ class Project:
         log.info("Found {} previous directories".format(len(prev_indirs)))
         log.info("Found {} new directories".format(len(new_indirs)))
 
-        return ([
-                    {'raw': {'indir': indir,
-                             'real_indir': os.path.realpath(indir)},
-                     'meta': {'project': self.code},
-                     }
-                    for indir in new_indirs
-                    ]
+        return ([{'raw': {'indir': indir,
+                          'real_indir': os.path.realpath(indir),
+                          'initdate': datetime.now().isoformat()
+                          },
+                  'meta': {'project': self.code},
+                  }
+                 for indir in new_indirs
+                 ]
                 + prev_infos)
 
     def __repr__(self):
@@ -86,8 +79,7 @@ def process_projects(*projects):
         log.debug("Found {} infos".format(len(raw_infos)))
         with Pool() as pool:
             nfo_infos = pool.map(record(project.nfo), raw_infos)
-            cat_infos = pool.map(record(project.cat), nfo_infos, chunksize=1)
-            cnv_infos = pool.map(record(project.cnv), cat_infos, chunksize=1)
+            cnv_infos = pool.map(record(project.cnv), nfo_infos, chunksize=1)
         infos += cnv_infos
     return infos
 
