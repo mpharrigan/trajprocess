@@ -6,10 +6,20 @@ import json
 import os
 import logging
 from pathlib import Path
+from datetime import datetime
 
 from . import process, postprocess
 
 log = logging.getLogger(__name__)
+
+
+class _processWrap:
+    def __init__(self, func, mdtype):
+        self.func = func
+        self.mdtype = mdtype
+
+    def __call__(self, info):
+        return self.func(info, self.mdtype)
 
 
 class Project:
@@ -21,18 +31,9 @@ class Project:
         self.indir = indir
         self.mdtype = mdtype
 
-        if mdtype == 'x21':
-            self.nfo = process.nfo_21
-            self.cat = process.cat_21
-            self.cnv = process.cnv_21
-        elif mdtype == 'xa4':
-            self.nfo = process.nfo_a4
-            self.cat = process.cat_a4
-            self.cnv = process.cnv_a4
-        elif mdtype == 'bw':
-            self.nfo = process.nfo_bw
-            self.cat = process.cat_bw
-            self.cnv = process.cnv_bw
+        self.nfo = _processWrap(process.nfo, mdtype)
+        self.cnv1 = _processWrap(process.cnv1, mdtype)
+        self.cnv2 = _processWrap(process.cnv2, mdtype)
 
     def get_run_clone_dirs(self):
         if self.mdtype in ['x21', 'xa4']:
@@ -54,13 +55,14 @@ class Project:
         log.info("Found {} previous directories".format(len(prev_indirs)))
         log.info("Found {} new directories".format(len(new_indirs)))
 
-        return ([
-                    {'raw': {'indir': indir,
-                             'real_indir': os.path.realpath(indir)},
-                     'meta': {'project': self.code},
-                     }
-                    for indir in new_indirs
-                    ]
+        return ([{'raw': {'indir': indir,
+                          'real_indir': os.path.realpath(indir),
+                          'initdate': datetime.now().isoformat()
+                          },
+                  'meta': {'project': self.code},
+                  }
+                 for indir in new_indirs
+                 ]
                 + prev_infos)
 
     def __repr__(self):
@@ -83,24 +85,30 @@ def process_projects(*projects):
     for project in projects:
         log.info("Starting project {}".format(project))
         raw_infos = list(project.get_infos())
-        log.debug("Found {} infos".format(len(raw_infos)))
+        log.info("Found {} infos".format(len(raw_infos)))
         with Pool() as pool:
             nfo_infos = pool.map(record(project.nfo), raw_infos)
-            cat_infos = pool.map(record(project.cat), nfo_infos, chunksize=1)
-            cnv_infos = pool.map(record(project.cnv), cat_infos, chunksize=1)
-        infos += cnv_infos
+            cnv1_infos = pool.map(record(project.cnv1), nfo_infos, chunksize=1)
+            cnv2_infos = pool.map(record(project.cnv2), cnv1_infos, chunksize=1)
+        infos += cnv2_infos
     return infos
+
+
+class _postprocessWrap:
+    def __init__(self, func, systemcode):
+        self.func = func
+        self.systemcode = systemcode
+
+    def __call__(self, info):
+        return self.func(info, self.systemcode)
 
 
 class Postprocess:
     def __init__(self, system):
-        if system == 'nav':
-            raise NotImplementedError
-        elif system == 'trek':
-            self.stp = postprocess.stp_trek
-            self.ctr = postprocess.ctr_traj
-        else:
-            raise ValueError("Invalid system")
+        self.system = system
+
+        self.stp = _postprocessWrap(postprocess.stp, system)
+        self.ctr = _postprocessWrap(postprocess.ctr, system)
 
 
 def process_post(postprocessor, cnv_infos):
@@ -111,12 +119,13 @@ def process_post(postprocessor, cnv_infos):
 
 
 def main_nav():
-    return process_projects(
+    infos = process_projects(
         Project('p9704', 'PROJ9704', 'x21'),
         Project('p9752', 'PROJ9752', 'xa4'),
         Project('v4', 'v4', 'bw'),
         Project('v5', 'v5', 'bw'),
     )
+    return process_post(Postprocess('nav'), infos)
 
 
 def main_trek():

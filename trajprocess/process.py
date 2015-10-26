@@ -1,8 +1,8 @@
 """Functions for performing the individual processing steps.
 
  - "nfo": Prepare meta-information for each trajectory
- - "cat": Concatenate trajectory parts
- - "cnv": Run trjconv for rough, pbc imaging (gromacs runs only)
+ - "cnv1": Run trjconv for pbc imaging (gromacs runs only)
+ - "cnv2": Convert files to netcdf
 
 """
 
@@ -12,6 +12,8 @@ import glob
 import re
 import json
 import logging
+from operator import itemgetter
+from datetime import datetime
 
 from mdtraj.formats import XTCTrajectoryFile, NetCDFTrajectoryFile
 import mdtraj.utils
@@ -20,167 +22,114 @@ import numpy as np
 log = logging.getLogger(__name__)
 
 
-def nfo_traj(info, *, rncln_re, clone=None):
-    rncln_ma = rncln_re.search(info['raw']['indir'])
-    meta = {
-        'project': info['meta']['project'],
-        'run': int(rncln_ma.group(1)),
-        'clone': int(rncln_ma.group(2)) if clone is None else clone,
-    }
-    path = {'workdir': "processed/{project}/{run}/{clone}".format(**meta)}
-    path['info'] = "{workdir}/info.json".format(**path)
-    info['meta'] = meta
-    info['path'] = path
+def _nfo(info, *, rncln_re, gen_glob, gen_re, gen=None, clone=None):
+    if 'run' not in info['meta']:
+        # Get metadata
+        rncln_ma = rncln_re.search(info['raw']['indir'])
+        info['meta']['run'] = int(rncln_ma.group(1))
+        info['meta']['clone'] = (int(rncln_ma.group(2))
+                                 if clone is None else clone)
+        log.debug("Got metadata {meta[project]}-{meta[run]}-{meta[clone]}"
+                  .format(**info))
 
-    struct_fn = "structs-{meta[project]}.json".format(**info)
-    try:
-        with open(struct_fn) as f:
-            stru = json.load(f)
-            string_key = str(info['meta']['run'])  # ugh
-            info['top'] = stru[string_key]
-    except Exception as e:
-        log.warning("No structure information. {}".format(e))
+    if 'path' not in info:
+        path = {'workdir': "processed/{project}/{run}/{clone}"
+            .format(**info['meta'])}
+        path['info'] = "{workdir}/info.json".format(**path)
+        info['path'] = path
+        os.makedirs(info['path']['workdir'], exist_ok=True)
+        log.debug("Make workdir: {path[workdir]}".format(**info))
 
-    os.makedirs(path['workdir'], exist_ok=True)
-    log.debug("NFO: {project} run {run} clone {clone}".format(**meta))
-    return info
+    # Get gens
+    raw = info['raw']
+    raw['gen_glob'] = gen_glob
+    raw['date'] = datetime.now().isoformat()
+    if 'gens' not in raw:
+        raw['gens'] = []
 
-
-def nfo_a4(info):
-    return nfo_traj(
-        info,
-        rncln_re=re.compile(r"RUN(\d+)/CLONE(\d+)/"),
+    gens = sorted(
+        ((int(gen_re.search(gen_fn).group(1) if gen is None else gen), gen_fn)
+         for gen_fn in glob.glob("{indir}/{gen_glob}".format(**raw))),
+        key=itemgetter(0)
     )
 
+    # Make sure they're contiguous
+    prev_gen = -1
+    for gen, gen_fn in gens:
+        raw['gens'] += [gen_fn]
 
-def nfo_21(info):
-    return nfo_traj(
-        info,
-        rncln_re=re.compile(r"RUN(\d+)/CLONE(\d+)/"),
-    )
-
-
-def nfo_bw(info):
-    return nfo_traj(
-        info,
-        rncln_re=re.compile(r"run-(\d+)/"),
-        clone=0
-    )
-
-
-def cat_traj(info, *, gen_glob, gen_re):
-    cat_info = {
-        'xtc_out': "{workdir}/cat.xtc".format(**info['path']),
-        'log_out': "{workdir}/cat.log".format(**info['path']),
-    }
-
-    fns = glob.glob(gen_glob.format(**info))
-
-    # Refuse too-short trajectories
-    if len(fns) < 2:
-        if 'cat' not in info:
-            info['cat'] = cat_info
-        info['cat']['success'] = False
-        return info
-
-    gen_re = re.compile(os.path.normpath(gen_re.format(**info)))
-    gens = sorted(int(gen_re.match(fn).group(1)) for fn in fns)
-    cat_info['gen'] = gens[-1] + 1
-
-    if 'cat' in info and info['cat']['success']:
-        # Set up for appending
-        conv_fns = [fn for fn in fns
-                    if int(gen_re.match(fn).group(1)) >= info['cat']['gen']]
-        if len(conv_fns) == 0:
+        if gen != prev_gen + 1:
+            log.error("Found discontinous gens. {} --> {}"
+                      .format(prev_gen, gen))
+            raw['success'] = False
+            info['raw'] = raw
             return info
-        conv_fns.append(info['cat']['xtc_out'])
-    else:
-        conv_fns = fns
+        prev_gen = gen
 
-    info['cat'] = cat_info
+    raw['success'] = True
+    info['raw'] = raw
 
-    # Make sure gen indexing matches number of files
-    if len(fns) != gens[-1] + 1:
-        info['cat']['n_files'] = len(fns)
-        log.error("CAT: {meta[project]}-{meta[run]}-{meta[clone]} "
-                  "Non contiguous trajectories? "
-                  "By regex: {cat[gen]}. Files: {cat[n_files]}".format(**info))
-        info['cat']['success'] = False
-        return info
+    # Get structure (topology) data
+    if 'top' not in info:
+        struct_fn = "structs-{meta[project]}.json".format(**info)
+        try:
+            with open(struct_fn) as f:
+                stru = json.load(f)
+                string_key = str(info['meta']['run'])  # ugh
+                info['top'] = stru[string_key]
+        except Exception as e:
+            log.warning("No structure information. {}".format(e))
 
-    # Give some info
-    log.debug("CAT: {meta[project]}-{meta[run]}-{meta[clone]} "
-              "found {cat[gen]} trajectories".format(**info))
+    # Set up working directory
+    log.debug("NFO: {project} run {run} clone {clone}".format(**info['meta']))
 
-
-    # Run trjcat
-    with open(info['cat']['log_out'], 'w') as logf:
-        subprocess.check_call(
-            (["gmx", "trjcat", "-f"]
-             + conv_fns + ['-o', info['cat']['xtc_out']]),
-            stdout=logf,
-            stderr=subprocess.STDOUT
-        )
-    info['cat']['success'] = True
     return info
 
 
-def cat_a4(info):
-    return cat_traj(
+def nfo(info, projcode):
+    rncln_res = {
+        'xa4': re.compile(r"RUN(\d+)/CLONE(\d+)/"),
+        'x21': re.compile(r"RUN(\d+)/CLONE(\d+)/"),
+        'bw': re.compile(r"run-(\d+)/"),
+    }
+    gen_globs = {
+        'xa4': "frame*.xtc",
+        'x21': "results-???/positions.xtc",
+        'bw': "traj_comp.xtc",
+    }
+    gen_res = {
+        'xa4': re.compile(r"frame(\d+).xtc"),
+        'x21': re.compile(r"results-(\d+)/positions.xtc"),
+        'bw': re.compile(r""),
+    }
+    gen = None
+    clone = None
+    if projcode == 'bw':
+        gen = 0
+        clone = 0
+
+    return _nfo(
         info,
-        gen_glob="{raw[indir]}/frame*.xtc",
-        gen_re="{raw[indir]}/frame([0-9]+).xtc",
+        rncln_re=rncln_res[projcode],
+        gen_glob=gen_globs[projcode],
+        gen_re=gen_res[projcode],
+        gen=gen,
+        clone=clone,
     )
 
 
-def cat_21(info):
-    return cat_traj(
-        info,
-        gen_glob="{raw[indir]}/results-???/positions.xtc",
-        gen_re="{raw[indir]}/results-([0-9]+)/positions.xtc"
-    )
-
-
-def cat_bw(info):
-    info['cat'] = {
-        'success': True,
-        'gen': 1,
-        'xtc_out': "{raw[indir]}/traj_comp.xtc".format(**info)
-    }
-    return info
-
-
-def cnv_traj(info, *, stride, topology, skip=False, chunk=100):
-    if not info['cat']['success']:
-        info['cnv'] = {'success': False}
-        log.debug("CNV: {meta[project]}-{meta[run]}-{meta[clone]}. No input"
-                  .format(**info))
-        return info
-
-    if skip:
-        info['cnv'] = {
-            'stride': stride,
-            'xtc_out': "{cat[xtc_out]}".format(**info),
-            'success': True,
-        }
-        log.debug("CNV: {meta[project]}-{meta[run]}-{meta[clone]}. Skipping"
-                  .format(**info))
-        return cnv_to_nc(info, chunk=chunk)
-
-    info['cnv'] = {
-        'stride': stride,
-        'xtc_out': "{workdir}/cnv.xtc".format(**info['path']),
-        'log_out': "{workdir}/cnv.log".format(**info['path']),
-    }
-    log.debug("CNV: {meta[project]}-{meta[run]}-{meta[clone]}. Doing"
-              .format(**info))
-
-    with open(info['cnv']['log_out'], 'w') as logf:
-        popen = subprocess.Popen(
-            ['gmx', 'trjconv', '-f', info['cat']['xtc_out'], '-o',
-             info['cnv']['xtc_out'], '-s',
-             topology, '-pbc', 'mol', '-center',
-             '-skip', "{cnv[stride]}".format(**info)],
+def _run_trjconv(info, gen, gen_fn):
+    out_fn = "{outdir}/{gen}.{outext}".format(gen=gen, **info['cnv1'])
+    with open(info['cnv1']['log'], 'a') as logf:
+        popen = subprocess.Popen([
+            'gmx', 'trjconv',
+            '-f', gen_fn,
+            '-o', out_fn,
+            '-s', info['cnv1']['topology'],
+            '-pbc', 'mol',
+            '-center',
+            '-skip', str(info['cnv1']['stride']),
+        ],
             stdin=subprocess.PIPE,
             stdout=logf,
             stderr=subprocess.STDOUT
@@ -193,11 +142,47 @@ def cnv_traj(info, *, stride, topology, skip=False, chunk=100):
         if popen.returncode != 0:
             raise RuntimeError("Non-zero exit code from trjconv {}"
                                .format(popen.returncode))
+    return out_fn
 
-    return cnv_to_nc(info, chunk=chunk)
+
+def _cnv1(info, *, stride, topology, skip=False):
+    info['cnv1'] = {
+        'date': datetime.now().isoformat(),
+        'stride': stride,
+        'topology': topology,
+        'skip': skip,
+        'log': "{workdir}/cnv1.log".format(**info['path']),
+        'outdir': "{workdir}/cnv1".format(**info['path']),
+        'outext': 'xtc',
+        'gens': [] if 'cnv1' not in info else info['cnv1']['gens'],
+    }
+
+    if not info['raw']['success']:
+        info['cnv1']['success'] = False
+        return info
+
+    if skip:
+        info['cnv1']['success'] = True
+        return info
+
+    log.debug("CNV1: {meta[project]}-{meta[run]}-{meta[clone]}. "
+              "Starting conversion with trjconv"
+              .format(**info))
+
+    os.makedirs(info['cnv1']['outdir'], exist_ok=True)
+
+    done = len(info['cnv1']['gens'])
+    for gen, gen_fn in enumerate(info['raw']['gens']):
+        if gen < done:
+            continue
+        out_fn = _run_trjconv(info, gen, gen_fn)
+        info['cnv1']['gens'] += [out_fn]
+
+    info['cnv1']['success'] = True
+    return info
 
 
-def _do_a_chunk(xtc, nc, chunk):
+def _nc_a_chunk(xtc, nc, chunk):
     xyz, time, step, box = xtc.read(chunk)
     assert box.ndim == 3, box.ndim
     al, bl, cl, alpha, beta, gamma = \
@@ -212,33 +197,56 @@ def _do_a_chunk(xtc, nc, chunk):
     )
 
 
-def cnv_to_nc(info, *, chunk):
-    log.debug("CNV: {meta[project]}-{meta[run]}-{meta[clone]}. Converting to nc"
-              .format(**info))
-    info['cnv']['nc_out'] = '{workdir}/cnv.nc'.format(**info['path'])
-    with XTCTrajectoryFile(info['cnv']['xtc_out'], 'r') as xtc:
-        with NetCDFTrajectoryFile(info['cnv']['nc_out'], 'w') as nc:
+def _nc_a_traj(info, gen, gen_fn, chunk):
+    out_fn = "{outdir}/{gen}.{outext}".format(gen=gen, **info['cnv2'])
+    with XTCTrajectoryFile(gen_fn, 'r') as xtc:
+        with NetCDFTrajectoryFile(out_fn, 'w') as nc:
             tot_frames = len(xtc)
             for _ in range(tot_frames // chunk):
-                _do_a_chunk(xtc, nc, chunk)
+                _nc_a_chunk(xtc, nc, chunk)
 
             if tot_frames % chunk != 0:
-                _do_a_chunk(xtc, nc, chunk=None)
+                _nc_a_chunk(xtc, nc, chunk=None)
 
-    info['cnv']['success'] = True
+    return out_fn
+
+
+def _cnv2(info, *, chunk=100):
+    info['cnv2'] = {
+        'date': datetime.now().isoformat(),
+        'chunk': chunk,
+        'log': "{workdir}/cnv2.log".format(**info['path']),
+        'outdir': "{workdir}/cnv2".format(**info['path']),
+        'outext': 'nc',
+        'gens': [] if 'cnv2' not in info else info['cnv2']['gens'],
+    }
+
+    if not info['cnv1']['success']:
+        info['cnv2']['success'] = False
+        return info
+
+    log.debug("CNV2: {meta[project]}-{meta[run]}-{meta[clone]}. "
+              "Converting to nc"
+              .format(**info))
+
+    if info['cnv1']['skip']:
+        prev_gens = info['raw']['gens']
+    else:
+        prev_gens = info['cnv1']['gens']
+
+    done = len(info['cnv2']['gens'])
+    os.makedirs(info['cnv2']['outdir'], exist_ok=True)
+    for gen, gen_fn in enumerate(prev_gens):
+        if gen < done:
+            continue
+        out_fn = _nc_a_traj(info, gen, gen_fn, chunk)
+        info['cnv2']['gens'] += [out_fn]
+
+    info['cnv2']['success'] = True
     return info
 
 
-def cnv_21(info):
-    return cnv_traj(
-        info,
-        stride=1,
-        topology="",
-        skip=True
-    )
-
-
-def cnv_a4(info):
+def cnv1(info, projcode):
     if info['meta']['project'] == 'p9752':
         stride = 4
     elif info['meta']['project'] == 'p9761':
@@ -246,16 +254,22 @@ def cnv_a4(info):
     else:
         stride = 1
 
-    return cnv_traj(
+    topology = None
+    skip = False
+    if projcode == 'xa4':
+        topology = "{raw[indir]}/frame0.tpr".format(**info)
+    elif projcode == 'bw':
+        topology = "{raw[indir]}/topol.tpr".format(**info)
+    else:
+        skip = True
+
+    return _cnv1(
         info,
         stride=stride,
-        topology="{raw[indir]}/frame0.tpr".format(**info),
+        topology=topology,
+        skip=skip
     )
 
 
-def cnv_bw(info):
-    return cnv_traj(
-        info,
-        stride=1,
-        topology="{raw[indir]}/topol.tpr".format(**info),
-    )
+def cnv2(info, projcode):
+    return _cnv2(info)

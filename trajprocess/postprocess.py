@@ -11,6 +11,8 @@ import shutil
 import glob
 import logging
 
+from datetime import datetime
+
 from jinja2 import Template
 
 log = logging.getLogger(__name__)
@@ -25,12 +27,64 @@ def _norm_cpptraj(cpptraj_selection):
         .replace("@", "atm-")
 
 
-def stp_traj(info, *, removes, num_to_keeps, topdir, topext="prmtop",
-             trajext='nc'):
-    if not info['cnv']['success']:
-        info['stp'] = {'success': False}
-        log.debug("STP: {meta[project]}-{meta[run]}-{meta[clone]}. No input"
-                  .format(**info))
+def _call_cpptraj_stp(info, template, gen, removes, prevs, cumprevs,
+                      num_to_keeps):
+    # Warning: I use workdir as the name for the proj-run-clone directory too
+    # sorry
+    workdir = "{outdir}/{g}".format(g=gen, **info['stp'])
+    os.makedirs(workdir, exist_ok=True)
+
+    varszip = zip(removes, prevs, prevs[1:], cumprevs, num_to_keeps)
+    for vars in varszip:
+        remove, prev, curr, cumprev, num = vars
+        workfile = "{workdir}/cpptraj.{curr}.tmp"
+        workfile = workfile.format(curr=curr, workdir=workdir)
+
+        with open(workfile, 'w') as f:
+            f.write(template.render(
+                remove=remove, prev=prev, curr=curr, cumprev=cumprev, num=num,
+                workdir=workdir, g=gen, **info
+            ))
+
+        with open(info['stp']['log'], 'a') as logf:
+            subprocess.check_call(
+                ['cpptraj', '-i', workfile],
+                stderr=subprocess.STDOUT, stdout=logf
+            )
+
+    # Move results
+    tmp_fn = "{workdir}/{final}.nc".format(workdir=workdir, final=prevs[-1])
+    out_fn = "{outdir}/{g}.nc".format(g=gen, **info['stp'])
+    shutil.move(tmp_fn, out_fn)
+
+    # Move prmtop if it doesn't already exist
+    if not os.path.exists(info['stp']['outtop']):
+        tmp_fn = ("{workdir}/{cumfinal}.{struct}.prmtop"
+                  .format(workdir=workdir, cumfinal=cumprevs[-1],
+                          struct=info['top']['struct']))
+        shutil.move(tmp_fn, info['stp']['outtop'])
+
+
+    # Remove files
+    shutil.rmtree(workdir)
+    return out_fn
+
+
+def _stp(info, *, removes, num_to_keeps, topdir):
+    info['stp'] = {
+        'log': "{workdir}/stp.log".format(**info['path']),
+        'outdir': "{workdir}/stp".format(**info['path']),
+        'topdir': topdir,
+        'removes': removes,
+        'num_to_keeps': num_to_keeps,
+        'date': datetime.now().isoformat(),
+        'gens': [] if 'stp' not in info else info['stp']['gens'],
+    }
+    info['stp']['outtop'] = ("{stp[topdir]}/{top[struct]}.strip.prmtop"
+                             .format(**info))
+
+    if not info['cnv2']['success']:
+        info['stp']['success'] = False
         return info
 
     log.debug("STP: {meta[project]}-{meta[run]}-{meta[clone]}. Doing"
@@ -43,132 +97,105 @@ def stp_traj(info, *, removes, num_to_keeps, topdir, topext="prmtop",
 
     template = Template("\n".join([
         "{% if prev is none %}",
-        "parm {{topdir}}/{{top['struct']}}.{{topext}}",
-        "trajin {{cnv['nc_out']}}",
+        "parm {{stp['topdir']}}/{{top['struct']}}.prmtop",
+        "trajin {{cnv2['gens'][g]}}",
         "{% else %}",
-        "parm {{stp['cpp_workdir']}}/{{cumprev}}.{{top['struct']}}.prmtop",
-        "trajin {{stp['cpp_workdir']}}/{{prev}}.{{trajext}}",
+        "parm {{workdir}}/{{cumprev}}.{{top['struct']}}.prmtop",
+        "trajin {{workdir}}/{{prev}}.nc",
         "{% endif %}",
         "solvent {{remove}}",
-        "closest {{num}} @CA closestout {{stp['cpp_workdir']}}/{{curr}}.dat outprefix {{stp['cpp_workdir']}}/{{curr}}",
-        "trajout {{stp['cpp_workdir']}}/{{curr}}.{{trajext}}",
+        "closest {{num}} @CA closestout {{workdir}}/{{curr}}.dat outprefix {{workdir}}/{{curr}}",
+        "trajout {{workdir}}/{{curr}}.nc",
         ""
     ]))
 
-    info['stp'] = {
-        'cpp_workdir': "{path[workdir]}/cpptraj".format(**info),
-        'cpp_archive': "{path[workdir]}/cpptraj.tar.gz".format(**info),
-        'log_out': "{path[workdir]}/stp.log".format(**info),
-        'removes': removes,
-        'num_to_keeps': num_to_keeps,
-    }
-
-    os.makedirs(info['stp']['cpp_workdir'], exist_ok=True)
-
-    varszip = zip(removes, prevs, prevs[1:], cumprevs, num_to_keeps)
-    for vars in varszip:
-        remove, prev, curr, cumprev, num = vars
-        workfile = "{stp[cpp_workdir]}/cpptraj.{curr}.tmp"
-        workfile = workfile.format(curr=curr, **info)
-
-        with open(workfile, 'w') as f:
-            f.write(template.render(
-                remove=remove, prev=prev, curr=curr, cumprev=cumprev, num=num,
-                topdir=topdir, topext=topext, trajext=trajext, **info
-            ))
-
-        with open(info['stp']['log_out'], 'a') as logf:
-            subprocess.check_call(
-                ['cpptraj', '-i', workfile],
-                stderr=subprocess.STDOUT, stdout=logf
-            )
-
-    # Move results
-    assert trajext == 'nc'
-    info['stp']['nc_out'] = "{path[workdir]}/stp.nc".format(**info)
-    info['stp']['prmtop'] = "{path[workdir]}/stp.prmtop".format(**info)
-    shutil.move(
-        "{stp[cpp_workdir]}/{final}.{trajext}"
-            .format(final=prevs[-1], trajext=trajext, **info),
-        "{stp[nc_out]}".format(**info)
-    )
-    shutil.move(
-        "{stp[cpp_workdir]}/{cumfinal}.{top[struct]}.prmtop"
-            .format(cumfinal=cumprevs[-1], **info),
-        "{stp[prmtop]}".format(**info)
-    )
-
-    # Remove intermediate trajectory files
-    for fn in glob.glob("{stp[cpp_workdir]}/*.nc".format(**info)):
-        os.remove(fn)
-
-    # Tar up workdir
-    subprocess.check_call(
-        ['tar', '-czf', info['stp']['cpp_archive'], info['stp']['cpp_workdir']],
-        stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL
-    )
-
-    # Clean up workdir
-    shutil.rmtree(info['stp']['cpp_workdir'])
+    done = len(info['stp']['gens'])
+    os.makedirs(info['stp']['outdir'], exist_ok=True)
+    for gen, gen_fn in enumerate(info['cnv2']['gens']):
+        if gen < done:
+            continue
+        out_fn = _call_cpptraj_stp(info, template, gen, removes, prevs,
+                                   cumprevs, num_to_keeps)
+        info['stp']['gens'] += [out_fn]
 
     info['stp']['success'] = True
 
     return info
 
 
-def stp_nav(info):
-    return stp_traj(
+def stp(info, systemcode):
+    if systemcode == 'nav':
+
+        removes = [":WAT", ":MY", "@Na+", "@Cl-"]
+        num_to_keeps = [10000, 100, 20, 20]
+        topdir = "tops-p9704"
+    elif systemcode == 'trek':
+        removes = [":WAT", ":PC", ":PE", "@K+", "@Cl-"]
+        num_to_keeps = [5000, 30, 30, 20, 20]
+        topdir = "tops-p9712"
+    else:
+        raise ValueError
+
+    return _stp(
         info,
-        removes=[":WAT", ":MY", "@Na+", "@Cl-"],
-        num_to_keeps=[10000, 100, 20, 20],
-        topdir="tops-p9704",
+        removes=removes,
+        num_to_keeps=num_to_keeps,
+        topdir=topdir,
     )
 
 
-def stp_trek(info):
-    return stp_traj(
-        info,
-        removes=[":WAT", ":PC", ":PE", "@K+", "@Cl-"],
-        num_to_keeps=[5000, 30, 30, 20, 20],
-        topdir="tops-p9712",
-    )
+def _call_cpptraj_ctr(info, template, gen, gen_fn):
+    workfile = "{outdir}/cpptraj.tmp".format(**info['ctr'])
+    out_fn = "{outdir}/{g}.nc".format(g=gen, **info['ctr'])
 
-
-def ctr_traj(info):
-    if not info['stp']['success']:
-        info['ctr'] = {'success': False}
-        log.debug("CTR: {meta[project]}-{meta[run]}-{meta[clone]}. No input"
-                  .format(**info))
-        return info
-
-    log.debug("CTR: {meta[project]}-{meta[run]}-{meta[clone]}. Doing"
-              .format(**info))
-    info['ctr'] = {
-        'nc_out': "{workdir}/ctr.nc".format(**info['path']),
-        'log_out': "{workdir}/ctr.log".format(**info['path']),
-        'prmtop': info['stp']['prmtop'],
-    }
-
-    template = "\n".join([
-        "parm {stp[prmtop]}",
-        "trajin {stp[nc_out]}",
-        "autoimage",
-        "center @CA",
-        "image",
-        "trajout {ctr[nc_out]}",
-        "",
-    ])
-
-    workfile = "{workdir}/cpptraj.tmp".format(**info['path'])
     with open(workfile, 'w') as f:
-        f.write(template.format(**info))
+        f.write(template.format(gen_fn=gen_fn, out_fn=out_fn, **info))
 
-    with open(info['ctr']['log_out'], 'w') as logf:
+    with open(info['ctr']['log'], 'a') as logf:
         subprocess.check_call(
             ['cpptraj', '-i', workfile],
             stderr=subprocess.STDOUT, stdout=logf
         )
-
     os.remove(workfile)
+    return out_fn
+
+
+def _ctr(info):
+    info['ctr'] = {
+        'log': "{workdir}/ctr.log".format(**info['path']),
+        'outdir': "{workdir}/ctr".format(**info['path']),
+        'date': datetime.now().isoformat(),
+        'gens': [] if 'ctr' not in info else info['ctr']['gens'],
+    }
+
+    if not info['stp']['success']:
+        info['ctr']['success'] = False
+        return info
+
+    log.debug("CTR: {meta[project]}-{meta[run]}-{meta[clone]}. Doing"
+              .format(**info))
+
+    template = "\n".join([
+        "parm {stp[outtop]}",
+        "trajin {gen_fn}",
+        "autoimage",
+        "center @CA",
+        "image",
+        "trajout {out_fn}",
+        "",
+    ])
+
+    done = len(info['ctr']['gens'])
+    os.makedirs(info['ctr']['outdir'], exist_ok=True)
+    for gen, gen_fn in enumerate(info['stp']['gens']):
+        if gen < done:
+            continue
+        out_fn = _call_cpptraj_ctr(info, template, gen, gen_fn)
+        info['ctr']['gens'] += [out_fn]
+
     info['ctr']['success'] = True
     return info
+
+
+def ctr(info, systemcode):
+    return _ctr(info)
