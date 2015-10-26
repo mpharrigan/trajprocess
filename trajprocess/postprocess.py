@@ -54,7 +54,7 @@ def _call_cpptraj_stp(info, template, gen, removes, prevs, cumprevs,
 
     # Move results
     tmp_fn = "{workdir}/{final}.nc".format(workdir=workdir, final=prevs[-1])
-    out_fn = "{outdir}/{g}.nc"
+    out_fn = "{outdir}/{g}.nc".format(g=gen, **info['stp'])
     shutil.move(tmp_fn, out_fn)
 
     # Move prmtop if it doesn't already exist
@@ -144,12 +144,12 @@ def stp(info, systemcode):
     )
 
 
-def _call_cpptraj_ctr(info, template, gen):
+def _call_cpptraj_ctr(info, template, gen, gen_fn):
     workfile = "{outdir}/cpptraj.tmp".format(**info['ctr'])
-    out_fn = "{outdir}/{g}.nc".format(g=gen)
+    out_fn = "{outdir}/{g}.nc".format(g=gen, **info['ctr'])
 
     with open(workfile, 'w') as f:
-        f.write(template.format(out_fn=out_fn, g=gen, **info))
+        f.write(template.format(gen_fn=gen_fn, out_fn=out_fn, **info))
 
     with open(info['ctr']['log'], 'a') as logf:
         subprocess.check_call(
@@ -157,6 +157,7 @@ def _call_cpptraj_ctr(info, template, gen):
             stderr=subprocess.STDOUT, stdout=logf
         )
     os.remove(workfile)
+    return out_fn
 
 
 def _ctr(info):
@@ -175,8 +176,8 @@ def _ctr(info):
               .format(**info))
 
     template = "\n".join([
-        "parm {stp[topout]}",
-        "trajin {stp[gens][g]}",
+        "parm {stp[outtop]}",
+        "trajin {gen_fn}",
         "autoimage",
         "center @CA",
         "image",
@@ -189,7 +190,7 @@ def _ctr(info):
     for gen, gen_fn in enumerate(info['stp']['gens']):
         if gen < done:
             continue
-        out_fn = _call_cpptraj_ctr(info, template, gen)
+        out_fn = _call_cpptraj_ctr(info, template, gen, gen_fn)
         info['ctr']['gens'] += [out_fn]
 
     info['ctr']['success'] = True

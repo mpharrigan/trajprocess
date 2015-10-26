@@ -62,7 +62,7 @@ def test_cnv_bw():
 @with_setup(mock2, cleanup2)
 def test_cnv_nc():
     os.remove("processed/p9761/24/7/cnv.nc")
-    with open("processed/p9761/24/7/info.json") as f:
+    with open("processed/p9761/24/7/info_precnv.json") as f:
         info = json.load(f)
     process._cnv2(info, chunk=2)
 
@@ -79,7 +79,7 @@ def test_cnv_nc():
 @with_setup(mock2, cleanup2)
 def test_nc_cpptraj():
     os.remove("processed/p9761/24/7/cnv.nc")
-    with open("processed/p9761/24/7/info.json") as f:
+    with open("processed/p9761/24/7/info_precnv.json") as f:
         info = json.load(f)
     process._cnv2(info, chunk=2)
 

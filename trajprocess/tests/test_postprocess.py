@@ -30,7 +30,7 @@ def test_mock2():
     with open("processed/p9761/24/7/info.json") as f:
         info = json.load(f)
 
-    assert os.path.exists(info['cnv']['xtc_out'])
+    assert os.path.exists(info['cnv2']['gens'][0])
 
 
 @with_setup(mock_project, cleanup)
@@ -38,31 +38,25 @@ def test_trek():
     # setup
     with open("processed/p9761/24/7/info.json") as f:
         info = json.load(f)
-    info['cnv']['nc_out'] = "{workdir}/cnv.nc".format(**info['path'])
 
-    # Make sure we can overwrite this
-    with open("{workdir}/cpptraj.tar.gz".format(**info['path']), 'wb') as f:
-        f.write(b'WHATUP')
-
-    # do stp
-    info = trajprocess.postprocess.stp_trek(info)
+    info = trajprocess.postprocess.stp(info, 'trek')
 
     # check stp cleanup
-    assert tarfile.is_tarfile('{workdir}/cpptraj.tar.gz'.format(**info['path']))
-    assert not os.path.exists('{workdir}/cpptraj'.format(**info['path']))
+    assert not os.path.exists('{workdir}/stp/0/'.format(**info['path']))
 
     # check stp results
-    traj = mdtraj.load(info['stp']['nc_out'], top=info['stp']['prmtop'])
+    traj = mdtraj.load(info['stp']['gens'][0], top=info['stp']['outtop'])
     assert traj.n_atoms == 30962
     assert len(traj) == 7
 
-
     # do ctr
-    info = trajprocess.postprocess.ctr_traj(info)
+    info = trajprocess.postprocess.ctr(info, "trek")
 
     # check ctr info
     assert not os.path.exists("{workdir}/cpptraj.tmp".format(**info['path']))
-    traj2 = mdtraj.load(info['ctr']['nc_out'], top=info['ctr']['prmtop'])
+    assert not os.path.exists(
+        "{workdir}/ctr/cpptraj.tmp".format(**info['path']))
+    traj2 = mdtraj.load(info['ctr']['gens'][0], top=info['stp']['outtop'])
 
     # check ctr results
     # Trek has 518 protein residues
@@ -73,17 +67,16 @@ def test_trek():
     np.testing.assert_array_almost_equal(cont1, cont2, decimal=4)
 
 
-@with_setup(mock_project, None)
+@with_setup(mock_project, cleanup)
 def test_process_post():
     # setup
     with open("processed/p9761/24/7/info.json") as f:
         info = json.load(f)
-    info['cnv']['nc_out'] = "{workdir}/cnv.nc".format(**info['path'])
     infos = [info]
 
     infos = process_post(Postprocess('trek'), infos)
     info, *_ = infos
-    traj = mdtraj.load(info['ctr']['nc_out'], top=info['ctr']['prmtop'])
+    traj = mdtraj.load(info['ctr']['gens'][0], top=info['stp']['outtop'])
     assert traj.n_atoms == 30962
 
     with open("processed/p9761/24/7/info.json") as f:
