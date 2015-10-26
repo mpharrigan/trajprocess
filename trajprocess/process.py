@@ -23,21 +23,22 @@ log = logging.getLogger(__name__)
 
 
 def _nfo(info, *, rncln_re, gen_glob, gen_re, gen=None, clone=None):
-    if 'meta' not in info:
+    if 'run' not in info['meta']:
         # Get metadata
         rncln_ma = rncln_re.search(info['raw']['indir'])
-        meta = {
-            'project': info['meta']['project'],
-            'run': int(rncln_ma.group(1)),
-            'clone': int(rncln_ma.group(2)) if clone is None else clone,
-        }
-        info['meta'] = meta
+        info['meta']['run'] = int(rncln_ma.group(1))
+        info['meta']['clone'] = (int(rncln_ma.group(2))
+                                 if clone is None else clone)
+        log.debug("Got metadata {meta[project]}-{meta[run]}-{meta[clone]}"
+                  .format(**info))
 
     if 'path' not in info:
         path = {'workdir': "processed/{project}/{run}/{clone}"
             .format(**info['meta'])}
         path['info'] = "{workdir}/info.json".format(**path)
         info['path'] = path
+        os.makedirs(info['path']['workdir'], exist_ok=True)
+        log.debug("Make workdir: {path[workdir]}".format(**info))
 
     # Get gens
     raw = info['raw']
@@ -55,12 +56,15 @@ def _nfo(info, *, rncln_re, gen_glob, gen_re, gen=None, clone=None):
     # Make sure they're contiguous
     prev_gen = -1
     for gen, gen_fn in gens:
-        raw['gens'] += [{'gen': gen, 'gen_fn': gen_fn}]
+        raw['gens'] += [gen_fn]
 
         if gen != prev_gen + 1:
+            log.error("Found discontinous gens. {} --> {}"
+                      .format(prev_gen, gen))
             raw['success'] = False
             info['raw'] = raw
             return info
+        prev_gen = gen
 
     raw['success'] = True
     info['raw'] = raw
@@ -77,7 +81,6 @@ def _nfo(info, *, rncln_re, gen_glob, gen_re, gen=None, clone=None):
             log.warning("No structure information. {}".format(e))
 
     # Set up working directory
-    os.makedirs(info['path']['workdir'], exist_ok=True)
     log.debug("NFO: {project} run {run} clone {clone}".format(**info['meta']))
 
     return info
@@ -168,13 +171,12 @@ def _cnv1(info, *, stride, topology, skip=False):
 
     os.makedirs(info['cnv1']['outdir'], exist_ok=True)
 
-    done = set(gen for gen, _ in info['cnv1']['gens'])
-    assert len(done) == len(info['cnv1']['gens'])
-    for gen, gen_fn in info['raw']['gens']:
-        if gen in done:
+    done = len(info['cnv1']['gens'])
+    for gen, gen_fn in enumerate(info['raw']['gens']):
+        if gen < done:
             continue
         out_fn = _run_trjconv(info, gen, gen_fn)
-        info['cnv1']['gens'] += [(gen, out_fn)]
+        info['cnv1']['gens'] += [out_fn]
 
     info['cnv1']['success'] = True
     return info
@@ -216,7 +218,7 @@ def _cnv2(info, *, chunk=100):
         'log': "{workdir}/cnv2.log".format(**info['path']),
         'outdir': "{workdir}/cnv2".format(**info['path']),
         'outext': 'nc',
-        'gens': [] if 'cnv1' not in info else info['cnv1']['gens'],
+        'gens': [] if 'cnv2' not in info else info['cnv2']['gens'],
     }
 
     if not info['cnv1']['success']:
@@ -232,16 +234,15 @@ def _cnv2(info, *, chunk=100):
     else:
         prev_gens = info['cnv1']['gens']
 
-    done = set(gen for gen, _ in prev_gens)
-    assert len(done) == len(prev_gens)
+    done = len(info['cnv2']['gens'])
     os.makedirs(info['cnv2']['outdir'], exist_ok=True)
-    for gen, gen_fn in prev_gens:
-        if gen in done:
+    for gen, gen_fn in enumerate(prev_gens):
+        if gen < done:
             continue
         out_fn = _nc_a_traj(info, gen, gen_fn, chunk)
-        info['cnv2']['gens'] += [(gen, out_fn)]
+        info['cnv2']['gens'] += [out_fn]
 
-    info['cnv']['success'] = True
+    info['cnv2']['success'] = True
     return info
 
 
@@ -258,7 +259,7 @@ def cnv1(info, projcode):
     if projcode == 'xa4':
         topology = "{raw[indir]}/frame0.tpr".format(**info)
     elif projcode == 'bw':
-        topology = "{raw[indir]}/topol.tpr".format(**info),
+        topology = "{raw[indir]}/topol.tpr".format(**info)
     else:
         skip = True
 

@@ -3,11 +3,15 @@
     "workdir": "processed/p9761/24/7",
     "info": "processed/p9761/24/7/info.json"
   },
-  "cnv": {
+  "cnv1": {
     "log_out": "processed/p9761/24/7/cnv.log",
     "xtc_out": "processed/p9761/24/7/cnv.xtc",
     "success": true,
-    "stride": 8
+    "stride": 8,
+    "gens": [
+      "processed/p9761/24/7/cnv.xtc"
+    ],
+    "skip": false
   },
   "raw": {
     "indir": "PROJ9761/RUN24/CLONE7/",

@@ -7,6 +7,10 @@ from nose import with_setup
 from trajprocess.files import Project, record
 from .mock1 import generate_project, cleanup
 
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
+
 
 @with_setup(generate_project, cleanup)
 def test_glob():
@@ -38,6 +42,8 @@ def test_nfo_1():
     raw_infos = proj.get_infos()
     nfo_infos = [proj.nfo(ri) for ri in raw_infos]
     assert len(nfo_infos) > 0
+    for info in nfo_infos:
+        assert info['raw']['success']
 
 
 @with_setup(generate_project, cleanup)

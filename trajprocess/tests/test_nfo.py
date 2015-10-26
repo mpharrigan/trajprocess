@@ -27,7 +27,9 @@ def test_nfo():
         assert os.path.exists(info['path']['workdir'])
 
         assert set(info.keys()) == {'raw', 'meta', 'path', 'top'}, info
-        assert set(info['raw'].keys()) == {'indir', 'real_indir'}
+        assert set(info['raw'].keys()) == {'indir', 'real_indir', 'date',
+                                           'initdate', 'gens', 'gen_glob',
+                                           'success'}
         assert set(info['meta'].keys()) == {'project', 'run', 'clone'}
         assert set(info['path'].keys()) == {'info', 'workdir'}
         assert set(info['top'].keys()) == {'struct', 'fext'}
@@ -55,7 +57,9 @@ def test_nfo_bw():
         assert os.path.exists(info['path']['workdir'])
 
         assert set(info.keys()) == {'raw', 'meta', 'path', 'top'}, info
-        assert set(info['raw'].keys()) == {'indir', 'real_indir'}
+        assert set(info['raw'].keys()) == {'indir', 'real_indir', 'date',
+                                           'initdate', 'gens', 'gen_glob',
+                                           'success'}
         assert set(info['meta'].keys()) == {'project', 'run', 'clone'}
         assert set(info['path'].keys()) == {'info', 'workdir'}
         assert set(info['top'].keys()) == {'struct', 'fext'}
