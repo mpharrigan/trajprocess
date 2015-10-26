@@ -94,15 +94,21 @@ def process_projects(*projects):
     return infos
 
 
+class _postprocessWrap:
+    def __init__(self, func, systemcode):
+        self.func = func
+        self.systemcode = systemcode
+
+    def __call__(self, info):
+        return self.func(info, self.systemcode)
+
+
 class Postprocess:
     def __init__(self, system):
-        if system == 'nav':
-            raise NotImplementedError
-        elif system == 'trek':
-            self.stp = postprocess.stp_trek
-            self.ctr = postprocess.ctr_traj
-        else:
-            raise ValueError("Invalid system")
+        self.system = system
+
+        self.stp = _postprocessWrap(postprocess.stp, system)
+        self.ctr = _postprocessWrap(postprocess.ctr, system)
 
 
 def process_post(postprocessor, cnv_infos):
@@ -113,12 +119,13 @@ def process_post(postprocessor, cnv_infos):
 
 
 def main_nav():
-    return process_projects(
+    infos = process_projects(
         Project('p9704', 'PROJ9704', 'x21'),
         Project('p9752', 'PROJ9752', 'xa4'),
         Project('v4', 'v4', 'bw'),
         Project('v5', 'v5', 'bw'),
     )
+    return process_post(Postprocess('nav'), infos)
 
 
 def main_trek():
