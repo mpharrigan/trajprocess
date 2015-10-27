@@ -12,4 +12,5 @@ Process trajectories in stages
 ## Requirements
 
  - `mdtraj` with PR #939 (fix netcdf standard)
- - Gromacs >= 5.0.5 for bug #1705 (fix segfault during `trjcat` append)
+ - Gromacs
+ - `cpptraj` from AmberTools

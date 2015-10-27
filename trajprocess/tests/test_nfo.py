@@ -2,17 +2,42 @@ import os
 from multiprocessing import Pool
 
 from nose import with_setup
+import json
 
-from trajprocess.files import Project, record
+from trajprocess.files import Processor, Trajectory, _record
 from .mock1 import generate_project, cleanup, generate_bw
+
+
+def _process_trajectory(trajectory):
+    trajectory.info = _record(trajectory.processor.nfo, trajectory.info)
+    return trajectory.info
+
+
+@with_setup(generate_project, cleanup)
+def test_trajectory_nfo():
+    proj = Processor("p1234", "data/PROJ1234", 'xa4')
+    trajectories = [Trajectory(info, proj, None) for info in proj.get_infos()]
+
+    with Pool() as pool:
+        nfo_infos = pool.map(_process_trajectory, trajectories, chunksize=1)
+
+    n = 0
+    for info in nfo_infos:
+        assert os.path.exists(info['path']['info'])
+        with open(info['path']['info']) as f:
+            reconstitute = json.load(f)
+        assert reconstitute == info
+        n += 1
+    assert n > 0
 
 
 @with_setup(generate_project, cleanup)
 def test_nfo():
-    project = Project("p1234", "data/PROJ1234", 'xa4')
-    raw_infos = list(project.get_infos())
+    proj = Processor("p1234", "data/PROJ1234", 'xa4')
+    trajectories = [Trajectory(info, proj, None) for info in proj.get_infos()]
+
     with Pool() as pool:
-        nfo_infos = pool.map(record(project.nfo), raw_infos)
+        nfo_infos = pool.map(_process_trajectory, trajectories, chunksize=1)
 
     for info in nfo_infos:
         assert info['meta']['project'] == 'p1234'
@@ -37,10 +62,11 @@ def test_nfo():
 
 @with_setup(generate_bw, cleanup)
 def test_nfo_bw():
-    project = Project("v1", "data/v1", 'bw')
-    raw_infos = list(project.get_infos())
+    proj = Processor("v1", "data/v1", 'bw')
+    trajectories = [Trajectory(info, proj, None) for info in proj.get_infos()]
+
     with Pool() as pool:
-        nfo_infos = pool.map(record(project.nfo), raw_infos)
+        nfo_infos = pool.map(_process_trajectory, trajectories, chunksize=1)
 
     assert len(nfo_infos) == 2
 

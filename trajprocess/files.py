@@ -9,20 +9,21 @@ from pathlib import Path
 from datetime import datetime
 
 from . import process, postprocess
+from .process import config
 
 log = logging.getLogger(__name__)
 
 
 class _processWrap:
-    def __init__(self, func, mdtype):
+    def __init__(self, func, which):
         self.func = func
-        self.mdtype = mdtype
+        self.which = which
 
     def __call__(self, info):
-        return self.func(info, self.mdtype)
+        return self.func(info, self.which)
 
 
-class Project:
+class Processor:
     def __init__(self, code, indir, mdtype):
         assert mdtype in ['x21', 'xa4', 'bw']
         assert indir[-1] != '/', "Don't include the trailing slash!"
@@ -40,9 +41,12 @@ class Project:
             return glob.glob("{}/RUN*/CLONE*/".format(self.indir))
         elif self.mdtype == 'bw':
             return glob.glob("{}/run-*/".format(self.indir))
+        else:
+            raise ValueError
 
     def get_infos(self):
-        prev = Path("processed/{project}".format(project=self.code))
+        prev = Path("{prefix}/{project}"
+                    .format(prefix=config.prefix, project=self.code))
         prev_indirs = set()
         prev_infos = list()
         for info_fn in prev.glob("**/info.json"):
@@ -52,6 +56,7 @@ class Project:
                 prev_indirs.add(info['raw']['indir'])
 
         new_indirs = set(self.get_run_clone_dirs()) - prev_indirs
+        log.info("Getting infos for {}".format(self))
         log.info("Found {} previous directories".format(len(prev_indirs)))
         log.info("Found {} new directories".format(len(new_indirs)))
 
@@ -66,71 +71,62 @@ class Project:
                 + prev_infos)
 
     def __repr__(self):
-        return "{code} ({indir})".format(**self.__dict__)
+        return "Project {code} ({indir})".format(**self.__dict__)
 
 
-class record:
-    def __init__(self, func):
-        self.func = func
-
-    def __call__(self, info):
-        info = self.func(info)
-        with open(info['path']['info'], 'w') as f:
-            json.dump(info, f, indent=2)
-        return info
-
-
-def process_projects(*projects):
-    infos = []
-    for project in projects:
-        log.info("Starting project {}".format(project))
-        raw_infos = list(project.get_infos())
-        log.info("Found {} infos".format(len(raw_infos)))
-        with Pool() as pool:
-            nfo_infos = pool.map(record(project.nfo), raw_infos)
-            cnv1_infos = pool.map(record(project.cnv1), nfo_infos, chunksize=1)
-            cnv2_infos = pool.map(record(project.cnv2), cnv1_infos, chunksize=1)
-        infos += cnv2_infos
-    return infos
-
-
-class _postprocessWrap:
-    def __init__(self, func, systemcode):
-        self.func = func
-        self.systemcode = systemcode
-
-    def __call__(self, info):
-        return self.func(info, self.systemcode)
-
-
-class Postprocess:
+class Postprocessor:
     def __init__(self, system):
         self.system = system
 
-        self.stp = _postprocessWrap(postprocess.stp, system)
-        self.ctr = _postprocessWrap(postprocess.ctr, system)
+        self.stp = _processWrap(postprocess.stp, system)
+        self.ctr = _processWrap(postprocess.ctr, system)
 
 
-def process_post(postprocessor, cnv_infos):
+class Trajectory:
+    def __init__(self, info, processor, postprocessor):
+        self.info = info
+        self.processor = processor
+        self.postprocessor = postprocessor
+
+
+def _record(func, info):
+    info = func(info)
+    with open(info['path']['info'], 'w') as f:
+        json.dump(info, f, indent=2)
+    return info
+
+
+def _process_trajectory(trajectory):
+    trajectory.info = _record(trajectory.processor.nfo, trajectory.info)
+    trajectory.info = _record(trajectory.processor.cnv1, trajectory.info)
+    trajectory.info = _record(trajectory.processor.cnv2, trajectory.info)
+    trajectory.info = _record(trajectory.postprocessor.stp, trajectory.info)
+    trajectory.info = _record(trajectory.postprocessor.ctr, trajectory.info)
+
+
+def process_trajectories(*processors, postprocessor):
+    trajectories = []
+    for proc in processors:
+        for info in proc.get_infos():
+            trajectories += [Trajectory(info, proc, postprocessor)]
+
     with Pool() as pool:
-        stp_infos = pool.map(record(postprocessor.stp), cnv_infos, chunksize=1)
-        ctr_infos = pool.map(record(postprocessor.ctr), stp_infos, chunksize=1)
-    return ctr_infos
+        pool.map(_process_trajectory, trajectories, chunksize=1)
 
 
 def main_nav():
-    infos = process_projects(
-        Project('p9704', 'PROJ9704', 'x21'),
-        Project('p9752', 'PROJ9752', 'xa4'),
-        Project('v4', 'v4', 'bw'),
-        Project('v5', 'v5', 'bw'),
+    process_trajectories(
+        Processor('p9704', 'PROJ9704', 'x21'),
+        Processor('p9752', 'PROJ9752', 'xa4'),
+        Processor('v4', 'v4', 'bw'),
+        Processor('v5', 'v5', 'bw'),
+        postprocessor=Postprocessor('nav')
     )
-    return process_post(Postprocess('nav'), infos)
 
 
 def main_trek():
-    infos = process_projects(
-        Project('p9712', 'PROJ9712', 'x21'),
-        Project('p9761', 'PROJ9761', 'xa4'),
+    process_trajectories(
+        Processor('p9712', 'PROJ9712', 'x21'),
+        Processor('p9761', 'PROJ9761', 'xa4'),
+        postprocessor=Postprocessor('trek')
     )
-    return process_post(Postprocess('trek'), infos)

@@ -4,7 +4,7 @@ import json
 
 from nose import with_setup
 
-from trajprocess.files import Project, record
+from trajprocess.files import Processor, _record, Trajectory
 from .mock1 import generate_project, cleanup
 
 import logging
@@ -14,20 +14,20 @@ logging.basicConfig(level=logging.DEBUG)
 
 @with_setup(generate_project, cleanup)
 def test_glob():
-    proj = Project("p1234", "data/PROJ1234", 'xa4')
+    proj = Processor("p1234", "data/PROJ1234", 'xa4')
     assert len(proj.get_run_clone_dirs()) > 0
 
 
 @with_setup(generate_project, cleanup)
 def test_infogen():
-    proj = Project("p1234", "data/PROJ1234", 'xa4')
+    proj = Processor("p1234", "data/PROJ1234", 'xa4')
     infos = list(proj.get_infos())
     assert len(infos) > 0, "{}".format(infos)
 
 
 @with_setup(generate_project, cleanup)
 def test_infogen_2():
-    proj = Project("p1234", "data/PROJ1234", 'xa4')
+    proj = Processor("p1234", "data/PROJ1234", 'xa4')
     n = 0
     for info in proj.get_infos():
         assert os.path.exists(info['raw']['indir'])
@@ -38,7 +38,7 @@ def test_infogen_2():
 
 @with_setup(generate_project, cleanup)
 def test_nfo_1():
-    proj = Project("p1234", "data/PROJ1234", 'xa4')
+    proj = Processor("p1234", "data/PROJ1234", 'xa4')
     raw_infos = proj.get_infos()
     nfo_infos = [proj.nfo(ri) for ri in raw_infos]
     assert len(nfo_infos) > 0
@@ -48,10 +48,9 @@ def test_nfo_1():
 
 @with_setup(generate_project, cleanup)
 def test_nfo_record():
-    proj = Project("p1234", "data/PROJ1234", 'xa4')
+    proj = Processor("p1234", "data/PROJ1234", 'xa4')
     raw_infos = proj.get_infos()
-    func = record(proj.nfo)
-    nfo_infos = [func(ri) for ri in raw_infos]
+    nfo_infos = [_record(proj.nfo, ri) for ri in raw_infos]
     assert len(nfo_infos) > 0
 
     for info in nfo_infos:
@@ -63,7 +62,7 @@ def test_nfo_record():
 
 @with_setup(generate_project, cleanup)
 def test_nfo_pool():
-    proj = Project("p1234", "data/PROJ1234", 'xa4')
+    proj = Processor("p1234", "data/PROJ1234", 'xa4')
     raw_infos = proj.get_infos()
     print("Raw infos", list(proj.get_infos()))
     with Pool() as pool:
@@ -72,23 +71,6 @@ def test_nfo_pool():
 
     print("Returned", nfo_infos)
     assert len(list(nfo_infos)) > 0
-
-
-@with_setup(generate_project, cleanup)
-def test_nfo_record_pool():
-    proj = Project("p1234", "data/PROJ1234", 'xa4')
-    raw_infos = proj.get_infos()
-    with Pool() as pool:
-        nfo_infos = pool.map(record(proj.nfo), raw_infos)
-
-    n = 0
-    for info in nfo_infos:
-        assert os.path.exists(info['path']['info'])
-        with open(info['path']['info']) as f:
-            reconstitute = json.load(f)
-        assert reconstitute == info
-        n += 1
-    assert n > 0
 
 
 @with_setup(generate_project, cleanup)

@@ -5,7 +5,7 @@ import mdtraj
 
 from .mock1 import generate_project, cleanup, generate_bw
 from .mock2 import mock_project as mock2, cleanup as cleanup2
-from trajprocess.files import Project, record
+from trajprocess.files import Processor, Trajectory, _record
 from trajprocess import process
 
 import numpy as np
@@ -13,14 +13,17 @@ import json
 
 import subprocess
 
+def _process_trajectory(trajectory):
+    trajectory.info = _record(trajectory.processor.nfo, trajectory.info)
+    trajectory.info = _record(trajectory.processor.cnv1, trajectory.info)
+    trajectory.info = _record(trajectory.processor.cnv2, trajectory.info)
+    return trajectory.info
 
 @with_setup(generate_project, cleanup)
 def test_cnv():
-    project = Project("p1234", "data/PROJ1234", 'xa4')
-    raw_infos = list(project.get_infos())
-    nfo_infos = list(map(record(project.nfo), raw_infos))
-    cnv1_infos = list(map(record(project.cnv1), nfo_infos))
-    cnv2_infos = list(map(record(project.cnv2), cnv1_infos))
+    proj = Processor("p1234", "data/PROJ1234", 'xa4')
+    trajectories = [Trajectory(info, proj, None) for info in proj.get_infos()]
+    cnv2_infos = list(map(_process_trajectory, trajectories))
 
     assert len(cnv2_infos) > 0
 
@@ -41,11 +44,9 @@ def test_cnv():
 
 @with_setup(generate_bw, cleanup)
 def test_cnv_bw():
-    project = Project("v1", "data/v1", 'bw')
-    raw_infos = list(project.get_infos())
-    nfo_infos = list(map(record(project.nfo), raw_infos))
-    cnv1_infos = list(map(record(project.cnv1), nfo_infos))
-    cnv2_infos = list(map(record(project.cnv2), cnv1_infos))
+    proj = Processor("v1", "data/v1", 'bw')
+    trajectories = [Trajectory(info, proj, None) for info in proj.get_infos()]
+    cnv2_infos = list(map(_process_trajectory, trajectories))
 
     assert len(cnv2_infos) > 0
 

@@ -22,6 +22,10 @@ import numpy as np
 log = logging.getLogger(__name__)
 
 
+class config:
+    prefix = "processed.v2"
+
+
 def _nfo(info, *, rncln_re, gen_glob, gen_re, gen=None, clone=None):
     if 'run' not in info['meta']:
         # Get metadata
@@ -33,8 +37,8 @@ def _nfo(info, *, rncln_re, gen_glob, gen_re, gen=None, clone=None):
                   .format(**info))
 
     if 'path' not in info:
-        path = {'workdir': "processed/{project}/{run}/{clone}"
-            .format(**info['meta'])}
+        path = {'workdir': "{prefix}/{project}/{run}/{clone}"
+            .format(prefix=config.prefix, **info['meta'])}
         path['info'] = "{workdir}/info.json".format(**path)
         info['path'] = path
         os.makedirs(info['path']['workdir'], exist_ok=True)

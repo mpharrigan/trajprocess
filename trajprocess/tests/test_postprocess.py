@@ -9,7 +9,7 @@ import mdtraj
 
 from trajprocess.postprocess import _norm_cpptraj
 import trajprocess.postprocess
-from trajprocess.files import Postprocess, process_post
+from trajprocess.files import Postprocessor, Trajectory
 from .mock2 import mock_project, cleanup
 
 
@@ -72,14 +72,10 @@ def test_process_post():
     # setup
     with open("processed/p9761/24/7/info.json") as f:
         info = json.load(f)
-    infos = [info]
+    traj = Trajectory(info, None, Postprocessor('trek'))
+    traj.info = traj.postprocessor.stp(traj.info)
+    traj.info = traj.postprocessor.ctr(traj.info)
+    info = traj.info
 
-    infos = process_post(Postprocess('trek'), infos)
-    info, *_ = infos
     traj = mdtraj.load(info['ctr']['gens'][0], top=info['stp']['outtop'])
     assert traj.n_atoms == 30962
-
-    with open("processed/p9761/24/7/info.json") as f:
-        disk_info = json.load(f)
-
-    assert disk_info == info
