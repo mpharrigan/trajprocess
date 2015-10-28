@@ -39,7 +39,7 @@ def test_cnv():
                     assert xyz.shape == (11, 22, 3), xyz.shape
 
                     xyz_nc, time, lengths, angles = dcdfile.read()
-                    np.testing.assert_array_equal(xyz * 10, xyz_nc)
+                    np.testing.assert_array_equal(xyz[:-1] * 10, xyz_nc)
 
 
 @with_setup(generate_bw, cleanup)
