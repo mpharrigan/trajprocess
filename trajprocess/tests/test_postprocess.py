@@ -1,7 +1,7 @@
 import os
 import subprocess
-import tarfile
 import json
+
 import numpy as np
 
 from nose import with_setup

@@ -1,13 +1,12 @@
 import os
 from multiprocessing import Pool
 import json
+import logging
 
 from nose import with_setup
 
-from trajprocess.files import Processor, _record, Trajectory
+from trajprocess.files import Processor, _record
 from .mock1 import generate_project, cleanup
-
-import logging
 
 logging.basicConfig(level=logging.DEBUG)
 

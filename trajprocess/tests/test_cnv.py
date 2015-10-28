@@ -1,23 +1,23 @@
 import os
+import json
+import subprocess
 
 from nose import with_setup
 import mdtraj
+import numpy as np
 
 from .mock1 import generate_project, cleanup, generate_bw
 from .mock2 import mock_project as mock2, cleanup as cleanup2
 from trajprocess.files import Processor, Trajectory, _record
 from trajprocess import process
 
-import numpy as np
-import json
-
-import subprocess
 
 def _process_trajectory(trajectory):
     trajectory.info = _record(trajectory.processor.nfo, trajectory.info)
     trajectory.info = _record(trajectory.processor.cnv1, trajectory.info)
     trajectory.info = _record(trajectory.processor.cnv2, trajectory.info)
     return trajectory.info
+
 
 @with_setup(generate_project, cleanup)
 def test_cnv():

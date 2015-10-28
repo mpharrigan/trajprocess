@@ -1,8 +1,8 @@
 import os
 from multiprocessing import Pool
+import json
 
 from nose import with_setup
-import json
 
 from trajprocess.files import Processor, Trajectory, _record
 from .mock1 import generate_project, cleanup, generate_bw

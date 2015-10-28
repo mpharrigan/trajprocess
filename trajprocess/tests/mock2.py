@@ -1,7 +1,8 @@
 import os
 from tempfile import mkdtemp
-from pkg_resources import resource_filename
 import shutil
+
+from pkg_resources import resource_filename
 
 
 def mock_project():

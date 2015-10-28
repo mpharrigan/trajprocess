@@ -8,9 +8,7 @@
 import subprocess
 import os
 import shutil
-import glob
 import logging
-
 from datetime import datetime
 
 from jinja2 import Template
