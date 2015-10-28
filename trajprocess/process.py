@@ -48,8 +48,7 @@ def _nfo(info, *, rncln_re, gen_glob, gen_re, gen=None, clone=None):
     raw = info['raw']
     raw['gen_glob'] = gen_glob
     raw['date'] = datetime.now().isoformat()
-    if 'gens' not in raw:
-        raw['gens'] = []
+    raw['gens'] = []  # re-do each time
 
     gens = sorted(
         ((int(gen_re.search(gen_fn).group(1) if gen is None else gen), gen_fn)
@@ -186,39 +185,41 @@ def _cnv1(info, *, stride, topology, skip=False):
     return info
 
 
-def _nc_a_chunk(xtc, nc, chunk):
-    xyz, time, step, box = xtc.read(chunk)
+def _nc_a_chunk(xtc, nc, has_overlapping_frames):
+    xyz, time, step, box = xtc.read()
     assert box.ndim == 3, box.ndim
     al, bl, cl, alpha, beta, gamma = \
         mdtraj.utils.box_vectors_to_lengths_and_angles(
             box[:, 0, :], box[:, 1, :], box[:, 2, :]
         )
+
+    xyz = xyz * 10
+    blengs = np.asarray([al, bl, cl]).T * 10
+    bangles = np.asarray([alpha, beta, gamma]).T
+
+    sl = slice(0, -1 if has_overlapping_frames else None, 1)
     nc.write(
-        xyz * 10,
-        time,
-        np.asarray([al, bl, cl]).T * 10,
-        np.asarray([alpha, beta, gamma]).T
+        xyz[sl, ...],
+        time[sl, ...],
+        blengs[sl, ...],
+        bangles[sl, ...],
     )
 
 
-def _nc_a_traj(info, gen, gen_fn, chunk):
+def _nc_a_traj(info, gen, gen_fn, has_overlapping_frames):
     out_fn = "{outdir}/{gen}.{outext}".format(gen=gen, **info['cnv2'])
     with XTCTrajectoryFile(gen_fn, 'r') as xtc:
         with NetCDFTrajectoryFile(out_fn, 'w') as nc:
-            tot_frames = len(xtc)
-            for _ in range(tot_frames // chunk):
-                _nc_a_chunk(xtc, nc, chunk)
-
-            if tot_frames % chunk != 0:
-                _nc_a_chunk(xtc, nc, chunk=None)
+            _nc_a_chunk(xtc, nc, has_overlapping_frames)
 
     return out_fn
 
 
-def _cnv2(info, *, chunk=100):
+def _cnv2(info, *, has_overlapping_frames, chunk=100):
     info['cnv2'] = {
         'date': datetime.now().isoformat(),
         'chunk': chunk,
+        'had_overlapping_frames': has_overlapping_frames,
         'log': "{workdir}/cnv2.log".format(**info['path']),
         'outdir': "{workdir}/cnv2".format(**info['path']),
         'outext': 'nc',
@@ -243,7 +244,7 @@ def _cnv2(info, *, chunk=100):
     for gen, gen_fn in enumerate(prev_gens):
         if gen < done:
             continue
-        out_fn = _nc_a_traj(info, gen, gen_fn, chunk)
+        out_fn = _nc_a_traj(info, gen, gen_fn, has_overlapping_frames)
         info['cnv2']['gens'] += [out_fn]
 
     info['cnv2']['success'] = True
@@ -271,9 +272,17 @@ def cnv1(info, projcode):
         info,
         stride=stride,
         topology=topology,
-        skip=skip
+        skip=skip,
     )
 
 
 def cnv2(info, projcode):
-    return _cnv2(info)
+    if projcode == 'xa4':
+        overlap = True
+    else:
+        overlap = False
+
+    return _cnv2(
+        info,
+        has_overlapping_frames=overlap
+    )

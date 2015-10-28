@@ -65,16 +65,16 @@ def test_cnv_nc():
     os.remove("processed/p9761/24/7/cnv.nc")
     with open("processed/p9761/24/7/info_precnv.json") as f:
         info = json.load(f)
-    process._cnv2(info, chunk=2)
+    process._cnv2(info, has_overlapping_frames=True)
 
     top = 'tops-p9712/{top[struct]}.prmtop'.format(**info)
     trj1 = mdtraj.load(info['cnv1']['gens'][0], top=top)
     trj2 = mdtraj.load(info['cnv2']['gens'][0], top=top)
 
-    np.testing.assert_array_almost_equal(trj1.xyz, trj2.xyz)
-    np.testing.assert_array_almost_equal(trj1.unitcell_vectors,
+    np.testing.assert_array_almost_equal(trj1.xyz[:-1], trj2.xyz)
+    np.testing.assert_array_almost_equal(trj1.unitcell_vectors[:-1],
                                          trj2.unitcell_vectors)
-    np.testing.assert_array_almost_equal(trj1.time, trj2.time)
+    np.testing.assert_array_almost_equal(trj1.time[:-1], trj2.time)
 
 
 @with_setup(mock2, cleanup2)
@@ -82,7 +82,7 @@ def test_nc_cpptraj():
     os.remove("processed/p9761/24/7/cnv.nc")
     with open("processed/p9761/24/7/info_precnv.json") as f:
         info = json.load(f)
-    process._cnv2(info, chunk=2)
+    process._cnv2(info, has_overlapping_frames=True)
 
     top = 'tops-p9712/{top[struct]}.prmtop'.format(**info)
     out = "{workdir}/test.nc".format(**info['path'])
