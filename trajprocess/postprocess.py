@@ -78,12 +78,15 @@ def _stp(info, *, removes, num_to_keeps, topdir):
         'date': datetime.now().isoformat(),
         'gens': [] if 'stp' not in info else info['stp']['gens'],
     }
-    info['stp']['outtop'] = ("{stp[topdir]}/{top[struct]}.strip.prmtop"
-                             .format(**info))
 
     if not info['cnv2']['success']:
         info['stp']['success'] = False
         return info
+
+    # Make sure this comes after the success check
+    # info['stp'] mat not be filled in.
+    info['stp']['outtop'] = ("{stp[topdir]}/{top[struct]}.strip.prmtop"
+                             .format(**info))
 
     log.debug("STP: {meta[project]}-{meta[run]}-{meta[clone]}. Doing"
               .format(**info))
