@@ -83,8 +83,7 @@ def _nfo(info, *, rncln_re, gen_glob, gen_re, gen=None, clone=None):
         except Exception as e:
             log.warning("No structure information. {}".format(e))
 
-    # Set up working directory
-    log.debug("NFO: {project} run {run} clone {clone}".format(**info['meta']))
+    log.info("NFO: {project} run {run} clone {clone}".format(**info['meta']))
 
     return info
 
@@ -123,6 +122,7 @@ def nfo(info, projcode):
 
 def _run_trjconv(info, gen, gen_fn):
     out_fn = "{outdir}/{gen}.{outext}".format(gen=gen, **info['cnv1'])
+    log.debug("Running trjconv {} {}".format(gen_fn, out_fn))
     with open(info['cnv1']['log'], 'a') as logf:
         popen = subprocess.Popen([
             'gmx', 'trjconv',
@@ -168,13 +168,12 @@ def _cnv1(info, *, stride, topology, skip=False):
         info['cnv1']['success'] = True
         return info
 
-    log.debug("CNV1: {meta[project]}-{meta[run]}-{meta[clone]}. "
-              "Starting conversion with trjconv"
-              .format(**info))
-
     os.makedirs(info['cnv1']['outdir'], exist_ok=True)
 
     done = len(info['cnv1']['gens'])
+    log.info("CNV1: {meta[project]}-{meta[run]}-{meta[clone]}. "
+             "Done {done}, doing {todo}"
+             .format(done=done, todo=len(info['raw']['gens']) - done, **info))
     for gen, gen_fn in enumerate(info['raw']['gens']):
         if gen < done:
             continue
@@ -208,6 +207,7 @@ def _nc_a_chunk(xtc, nc, has_overlapping_frames):
 
 def _nc_a_traj(info, gen, gen_fn, has_overlapping_frames):
     out_fn = "{outdir}/{gen}.{outext}".format(gen=gen, **info['cnv2'])
+    log.debug("Converting to netcdf {} {}".format(gen_fn, out_fn))
     with XTCTrajectoryFile(gen_fn, 'r') as xtc:
         with NetCDFTrajectoryFile(out_fn, 'w') as nc:
             _nc_a_chunk(xtc, nc, has_overlapping_frames)
@@ -230,16 +230,15 @@ def _cnv2(info, *, has_overlapping_frames, chunk=100):
         info['cnv2']['success'] = False
         return info
 
-    log.debug("CNV2: {meta[project]}-{meta[run]}-{meta[clone]}. "
-              "Converting to nc"
-              .format(**info))
-
     if info['cnv1']['skip']:
         prev_gens = info['raw']['gens']
     else:
         prev_gens = info['cnv1']['gens']
 
     done = len(info['cnv2']['gens'])
+    log.info("CNV2: {meta[project]}-{meta[run]}-{meta[clone]}. "
+             "Converting to nc. Done {done}, todo {todo}"
+             .format(done=done, todo=len(prev_gens) - done, **info))
     os.makedirs(info['cnv2']['outdir'], exist_ok=True)
     for gen, gen_fn in enumerate(prev_gens):
         if gen < done:

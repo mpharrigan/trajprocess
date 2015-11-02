@@ -53,6 +53,7 @@ def _call_cpptraj_stp(info, template, gen, removes, prevs, cumprevs,
     # Move results
     tmp_fn = "{workdir}/{final}.nc".format(workdir=workdir, final=prevs[-1])
     out_fn = "{outdir}/{g}.nc".format(g=gen, **info['stp'])
+    log.debug("Called cpptraj and moved result {}".format(out_fn))
     shutil.move(tmp_fn, out_fn)
 
     # Move prmtop if it doesn't already exist
@@ -88,8 +89,6 @@ def _stp(info, *, removes, num_to_keeps, topdir):
     info['stp']['outtop'] = ("{stp[topdir]}/{top[struct]}.strip.prmtop"
                              .format(**info))
 
-    log.debug("STP: {meta[project]}-{meta[run]}-{meta[clone]}. Doing"
-              .format(**info))
     prevs = [None] + [_norm_cpptraj(remove) for remove in removes]
 
     # Ugh. cpptraj appends names instead of letting you specify the actual
@@ -111,6 +110,10 @@ def _stp(info, *, removes, num_to_keeps, topdir):
     ]))
 
     done = len(info['stp']['gens'])
+    log.info("STP: {meta[project]}-{meta[run]}-{meta[clone]}. "
+             "Using cpptraj to strip closest. "
+             "Done {done}, todo {todo}"
+             .format(done=done, todo=len(info['cnv2']['gens']) - done, **info))
     os.makedirs(info['stp']['outdir'], exist_ok=True)
     for gen, gen_fn in enumerate(info['cnv2']['gens']):
         if gen < done:
@@ -149,6 +152,8 @@ def _call_cpptraj_ctr(info, template, gen, gen_fn):
     workfile = "{outdir}/cpptraj.tmp".format(**info['ctr'])
     out_fn = "{outdir}/{g}.nc".format(g=gen, **info['ctr'])
 
+    log.debug("Centering {}".format(out_fn))
+
     with open(workfile, 'w') as f:
         f.write(template.format(gen_fn=gen_fn, out_fn=out_fn, **info))
 
@@ -173,9 +178,6 @@ def _ctr(info):
         info['ctr']['success'] = False
         return info
 
-    log.debug("CTR: {meta[project]}-{meta[run]}-{meta[clone]}. Doing"
-              .format(**info))
-
     template = "\n".join([
         "parm {stp[outtop]}",
         "trajin {gen_fn}",
@@ -187,6 +189,10 @@ def _ctr(info):
     ])
 
     done = len(info['ctr']['gens'])
+    log.info("CTR: {meta[project]}-{meta[run]}-{meta[clone]}. "
+             "Using cpptraj to image and center. "
+             "Done {done}, todo {todo}"
+             .format(done=done, todo=len(info['stp']['gens']) - done, **info))
     os.makedirs(info['ctr']['outdir'], exist_ok=True)
     for gen, gen_fn in enumerate(info['stp']['gens']):
         if gen < done:
