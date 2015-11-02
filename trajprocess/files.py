@@ -113,6 +113,8 @@ def process_trajectories(*processors, postprocessor):
     with Pool() as pool:
         pool.map(_process_trajectory, trajectories, chunksize=1)
 
+    log.info("Done!")
+
 
 def main_nav():
     process_trajectories(
