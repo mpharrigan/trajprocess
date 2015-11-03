@@ -62,14 +62,23 @@ def _nfo(info, *, rncln_re, gen_glob, gen_re, gen=None, clone=None):
         raw['gens'] += [gen_fn]
 
         if gen != prev_gen + 1:
-            log.error("Found discontinous gens. {} --> {}"
-                      .format(prev_gen, gen))
+            log.error("Found discontinous gens "
+                      "in {meta[project]}-{meta[run]}-{meta[clone]}. "
+                      "It went from {i1} to {i2}."
+                      .format(i1=prev_gen, i2=gen, **info))
             raw['success'] = False
             info['raw'] = raw
             return info
         prev_gen = gen
 
-    raw['success'] = True
+    if 'exclude' in raw:
+        log.warning("Excluding {meta[project]}-{meta[run]}-{meta[clone]}. "
+                    "Reason: {raw[exclude]}".format(**info))
+        raw['gens'] = []
+        raw['success'] = False
+    else:
+        raw['success'] = True
+
     info['raw'] = raw
 
     # Get structure (topology) data
