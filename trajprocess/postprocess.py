@@ -129,7 +129,6 @@ def _stp(info, *, removes, num_to_keeps, topdir):
 
 def stp(info, systemcode):
     if systemcode == 'nav':
-
         removes = [":WAT", ":MY", "@Na+", "@Cl-"]
         num_to_keeps = [10000, 100, 20, 20]
         topdir = "tops-p9704"

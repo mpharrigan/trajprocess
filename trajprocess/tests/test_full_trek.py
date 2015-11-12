@@ -14,8 +14,7 @@ import mdtraj
 PROJ61_LENGTH_PER_GEN = 2
 
 
-# Requires:
-# http://web.stanford.edu/~harrigan/mock3-reference.tar.bz2
+# Please run ./get_addtl_ref_data.sh before attempting these tests
 
 
 def _trek_asserts1(I):
@@ -62,7 +61,7 @@ def _trek_asserts2(I):
     assert traj.n_frames == PROJ61_LENGTH_PER_GEN * I, traj.n_frames
 
 
-@with_setup(mock3, None)
+@with_setup(mock3, cleanup3)
 def test_trek():
     # Make a concatenated
     subprocess.check_call(
