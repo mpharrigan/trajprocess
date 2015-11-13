@@ -11,8 +11,9 @@ from pathlib import Path
 
 import mdtraj
 
-PROJ9704_FRAMES_PER_GEN = 16
-PROJ9752_FRAMES_PER_GEN = 8
+PROJ9704_FRAMES_PER_GEN = 8
+PROJ9752_FRAMES_PER_GEN = 1
+N_TRIM_ATOMS = 56700
 
 
 # Please run ./get_addtl_ref_data.sh before attempting these tests
@@ -35,7 +36,7 @@ def _nav_asserts1(I):
     # Load all gens
     traj = mdtraj.load(info['ctr']['gens'], top=top)
     assert len(traj) == traj.n_frames
-    assert traj.n_atoms == 30962, traj.n_atoms
+    assert traj.n_atoms == N_TRIM_ATOMS, traj.n_atoms
     assert traj.n_frames == PROJ9704_FRAMES_PER_GEN * I, traj.n_frames
 
 
@@ -58,7 +59,7 @@ def _nav_asserts2(I):
     # Load all gens
     traj = mdtraj.load(info['ctr']['gens'], top=top)
     assert len(traj) == traj.n_frames
-    assert traj.n_atoms == 30962, traj.n_atoms
+    assert traj.n_atoms == N_TRIM_ATOMS, traj.n_atoms
     assert traj.n_frames == PROJ9752_FRAMES_PER_GEN * I, traj.n_frames
 
 
