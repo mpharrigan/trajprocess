@@ -7,7 +7,7 @@ import os
 import logging
 from pathlib import Path
 from datetime import datetime
-
+import sys
 from . import process, postprocess
 from .process import config
 
@@ -89,8 +89,30 @@ class Trajectory:
         self.postprocessor = postprocessor
 
 
+def dump(info, exc, func):
+    fn = "./Exception-{}.log".format(datetime.now().isoformat())
+    with open(fn, 'a') as f:
+        f.write("\n".join([
+            "An exception occured",
+            "--------------------",
+            str(info['meta']),
+            str(set(info.keys())),
+            str(func)
+            "",
+            "",
+            str(exc),
+            "",
+            "",
+        ]))
+        _, _, traceback = sys.exec_info()
+        traceback.print_tb(traceback)
+
+
 def _record(func, info):
-    info = func(info)
+    try:
+        info = func(info)
+    except Exception as exc:
+        dump(info, exc, func)
     with open(info['path']['info'], 'w') as f:
         json.dump(info, f, indent=2)
     return info
