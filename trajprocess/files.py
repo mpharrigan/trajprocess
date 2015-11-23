@@ -97,7 +97,7 @@ def dump(info, exc, func):
             "--------------------",
             str(info['meta']),
             str(set(info.keys())),
-            str(func)
+            str(func),
             "",
             "",
             str(exc),
