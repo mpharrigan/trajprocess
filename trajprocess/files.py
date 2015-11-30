@@ -1,13 +1,15 @@
 """High-level machinery for running multiple processing steps."""
 
-from multiprocessing import Pool
 import glob
 import json
-import os
 import logging
-from pathlib import Path
-from datetime import datetime
+import os
 import sys
+import traceback
+from datetime import datetime
+from multiprocessing import Pool
+from pathlib import Path
+
 from . import process, postprocess
 from .process import config
 
@@ -104,8 +106,8 @@ def dump(info, exc, func):
             "",
             "",
         ]))
-        _, _, traceback = sys.exc_info()
-        traceback.print_tb(traceback)
+        _, _, tb = sys.exc_info()
+        traceback.print_tb(tb)
 
 
 def _record(func, info):
