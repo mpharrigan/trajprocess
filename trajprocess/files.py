@@ -107,7 +107,7 @@ def dump(info, exc, func):
             "",
         ]))
         _, _, tb = sys.exc_info()
-        traceback.print_tb(tb)
+        traceback.print_tb(tb, file=f)
 
 
 def _record(func, info):
