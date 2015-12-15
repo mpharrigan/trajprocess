@@ -10,7 +10,6 @@ import os
 import shutil
 import logging
 from datetime import datetime
-
 from jinja2 import Template
 
 log = logging.getLogger(__name__)
@@ -29,7 +28,8 @@ def _call_cpptraj_stp(info, template, gen, removes, prevs, cumprevs,
                       num_to_keeps):
     # Warning: I use workdir as the name for the proj-run-clone directory too
     # sorry
-    workdir = "/dev/shm/trajprocess/{project}/{run}/{clone}/{gen}".format(gen=gen, **info['meta'])
+    workdir = ("/dev/shm/trajprocess/{project}/{run}/{clone}/{gen}"
+               .format(gen=gen, **info['meta']))
     os.makedirs(workdir)
 
     varszip = zip(removes, prevs, prevs[1:], cumprevs, num_to_keeps)
@@ -62,7 +62,6 @@ def _call_cpptraj_stp(info, template, gen, removes, prevs, cumprevs,
                   .format(workdir=workdir, cumfinal=cumprevs[-1],
                           struct=info['top']['struct']))
         shutil.move(tmp_fn, info['stp']['outtop'])
-
 
     # Remove files
     shutil.rmtree(workdir)
