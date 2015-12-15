@@ -29,8 +29,8 @@ def _call_cpptraj_stp(info, template, gen, removes, prevs, cumprevs,
                       num_to_keeps):
     # Warning: I use workdir as the name for the proj-run-clone directory too
     # sorry
-    workdir = "{outdir}/{g}".format(g=gen, **info['stp'])
-    os.makedirs(workdir, exist_ok=True)
+    workdir = "/dev/shm/trajprocess/{project}/{run}/{clone}/{gen}".format(gen=gen, **info['meta'])
+    os.makedirs(workdir)
 
     varszip = zip(removes, prevs, prevs[1:], cumprevs, num_to_keeps)
     for vars in varszip:
