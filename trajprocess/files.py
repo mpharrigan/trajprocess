@@ -134,7 +134,7 @@ def process_trajectories(*processors, postprocessor):
         for info in proc.get_infos():
             trajectories += [Trajectory(info, proc, postprocessor)]
 
-    with Pool() as pool:
+    with Pool(processes=os.cpu_count() - 1) as pool:
         pool.map(_process_trajectory, trajectories, chunksize=1)
 
     log.info("Done!")
