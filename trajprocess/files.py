@@ -138,7 +138,7 @@ def process_trajectories(*processors, postprocessor, ipyparallel=False):
         from ipyparallel import Client
         rc = Client(profile='ipc')
         lbv = rc.load_balanced_view()
-        lbv.map(_process_trajectory, trajectories, retries=10)
+        lbv.map_async(_process_trajectory, trajectories, retries=10)
     else:
         with Pool(processes=os.cpu_count() - 1) as pool:
             pool.map(_process_trajectory, trajectories, chunksize=1)
