@@ -128,14 +128,20 @@ def _process_trajectory(trajectory):
     trajectory.info = _record(trajectory.postprocessor.ctr, trajectory.info)
 
 
-def process_trajectories(*processors, postprocessor):
+def process_trajectories(*processors, postprocessor, ipyparallel=False):
     trajectories = []
     for proc in processors:
         for info in proc.get_infos():
             trajectories += [Trajectory(info, proc, postprocessor)]
 
-    with Pool(processes=os.cpu_count() - 1) as pool:
-        pool.map(_process_trajectory, trajectories, chunksize=1)
+    if ipyparallel:
+        from ipyparallel import Client
+        rc = Client(profile='ipc')
+        lbv = rc.load_balanced_view()
+        lbv.map(_process_trajectory, trajectories, retries=10)
+    else:
+        with Pool(processes=os.cpu_count() - 1) as pool:
+            pool.map(_process_trajectory, trajectories, chunksize=1)
 
     log.info("Done!")
 
