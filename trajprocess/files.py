@@ -128,15 +128,15 @@ def _process_trajectory(trajectory):
     trajectory.info = _record(trajectory.postprocessor.ctr, trajectory.info)
 
 
-def process_trajectories(*processors, postprocessor, ipyparallel=False):
+def process_trajectories(*processors, postprocessor, ipyparallel=None):
     trajectories = []
     for proc in processors:
         for info in proc.get_infos():
             trajectories += [Trajectory(info, proc, postprocessor)]
 
-    if ipyparallel:
+    if ipyparallel is not None:
         from ipyparallel import Client
-        rc = Client(profile='ipc')
+        rc = Client(profile=ipyparallel)
         lbv = rc.load_balanced_view()
         lbv.map_async(_process_trajectory, trajectories, retries=10)
     else:
@@ -146,13 +146,14 @@ def process_trajectories(*processors, postprocessor, ipyparallel=False):
     log.info("Done!")
 
 
-def main_nav():
+def main_nav(ipyparallel=None):
     process_trajectories(
         Processor('p9704', 'PROJ9704', 'x21'),
         Processor('p9752', 'PROJ9752', 'xa4'),
         Processor('v4', 'v4', 'bw'),
         Processor('v5', 'v5', 'bw'),
-        postprocessor=Postprocessor('nav')
+        postprocessor=Postprocessor('nav'),
+        ipyparallel=ipyparallel,
     )
 
 
