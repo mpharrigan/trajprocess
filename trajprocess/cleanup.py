@@ -20,7 +20,10 @@ def try_remove(info, step, i):
 
 
 def clean(info):
-    n_done = len(info['ctr']['gens'])
+    try:
+        n_done = len(info['ctr']['gens'])
+    except KeyError:
+        n_done = 0
     log.info("Found {n_done} done in {project}-{run}-{clone}"
              .format(n_done=n_done, **info['meta']))
     for i in range(n_done):
