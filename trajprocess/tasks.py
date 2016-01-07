@@ -7,8 +7,12 @@ from .app import config
 
 class Task:
     @property
+    def depends(self):
+        yield from []
+
+    @property
     def is_done(self):
-        return False
+        return True
 
     def do(self, tasks):
         return
@@ -58,15 +62,8 @@ class RawXTC(Task):
         self.prc = prc
 
     @property
-    def is_done(self):
-        return True
-
-    @property
     def fn(self):
         return "{prc:raw}".format(prc=self.prc)
-
-    def do(self, tasks):
-        return
 
 
 class Trjconv(PRCTask):
@@ -143,7 +140,6 @@ class Project(Task):
     def depends(self):
         if self._depends is None:
             self._depends = list(self._get_depends())
-
         yield from self._depends
 
 
