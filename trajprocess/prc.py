@@ -1,18 +1,22 @@
 class PRC:
-    def __init__(self, project, run, clone, indir):
+    def __init__(self, project, run, clone, gen=None, in_fn=None):
         self.project = project
         self.run = run
         self.clone = clone
-        self.indir = indir
+        self.gen = gen
+        self.in_fn = in_fn
+        self.flags = set()
 
     @property
     def as_tuple(self):
-        return self.project, self.run, self.clone
+        return self.project, self.run, self.clone, self.gen
 
     def __format__(self, format_spec):
         if format_spec == 'dir':
             return "/".join(str(s) for s in self.as_tuple)
-        elif format_spec == 'indir':
-            return self.indir
+        if format_spec == 'gen':
+            return str(self.gen)
+        elif format_spec == 'raw':
+            return self.in_fn
         else:
             return "-".join(str(s) for s in self.as_tuple)

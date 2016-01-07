@@ -18,17 +18,15 @@ class PRCTask(Task):
     code = "unsp"
     fext = 'nc'
 
-    def __init__(self, prc, gen):
+    def __init__(self, prc):
         self.prc = prc
-        self.gen = gen
 
     @property
     def fn(self):
-        return ("{outdir}/{prc:dir}/{code}/{gen}.{fext}"
+        return ("{outdir}/{prc:dir}/{code}/{prc:gen}.{fext}"
                 .format(outdir=config.outdir,
                         code=self.code,
                         prc=self.prc,
-                        gen=self.gen,
                         fext=self.fext)
                 )
 
@@ -49,20 +47,23 @@ class PRCTask(Task):
         self.do_file(in_fn, out_fn)
 
     def __str__(self):
-        return "<{} {} {}>".format(self.prc, self.gen, self.code)
+        return "<{} {}>".format(self.prc, self.code)
 
     def do_file(self, infn, outfn):
         raise NotImplementedError
 
 
 class RawXTC(Task):
+    def __init__(self, prc):
+        self.prc = prc
+
     @property
     def is_done(self):
         return True
 
     @property
     def fn(self):
-        return "{indir}/RUN{run}/CLONE{clone}/frame{gen}.xtc"
+        return "{prc:raw}".format(prc=self.prc)
 
     def do(self, tasks):
         return
@@ -74,7 +75,7 @@ class Trjconv(PRCTask):
 
     @property
     def depends(self):
-        yield RawXTC()
+        yield RawXTC(self.prc)
 
     def do_file(self, infn, outfn):
         assert os.path.exists(infn)
@@ -86,11 +87,10 @@ class ConvertToNC(PRCTask):
 
     @property
     def depends(self):
-        self.is_gromacs = True
-        if self.is_gromacs:
-            yield Trjconv(self.prc, self.gen)
+        if "needs_trjconv" in self.prc.flags:
+            yield Trjconv(self.prc)
         else:
-            yield RawXTC()
+            yield RawXTC(self.prc)
 
     def do_file(self, infn, outfn):
         assert os.path.exists(infn)
@@ -102,7 +102,7 @@ class Strip(PRCTask):
 
     @property
     def depends(self):
-        yield ConvertToNC(self.prc, self.gen)
+        yield ConvertToNC(self.prc)
 
     def do_file(self, infn, outfn):
         assert os.path.exists(infn)
@@ -114,7 +114,7 @@ class Center(PRCTask):
 
     @property
     def depends(self):
-        yield Strip(self.prc, self.gen)
+        yield Strip(self.prc)
 
     def do_file(self, infn, outfn):
         assert os.path.exists(infn)
@@ -137,8 +137,7 @@ class Project(Task):
 
     def _get_depends(self):
         for prc in get_prcs(self.project, self.projtype, self.indir):
-            for gen in get_gens(prc, self.projtype):
-                yield Center(prc, gen)
+            yield Center(prc)
 
     @property
     def depends(self):
