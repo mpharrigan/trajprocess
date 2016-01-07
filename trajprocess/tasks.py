@@ -1,7 +1,8 @@
 import os
 import subprocess
-import re
-import glob
+
+from .project import parse_project, parse_projtype, get_gens, get_prcs
+from .app import config
 
 
 class Task:
@@ -13,29 +14,36 @@ class Task:
         return
 
 
-class config:
-    indir = 'trajprocess.in.4'
-    outdir = 'trajprocess.out.4'
+class PRCTask(Task):
+    code = "unsp"
+    fext = 'nc'
 
-
-class PRC:
-    def __init__(self, project, run, clone, indir):
-        self.project = project
-        self.run = run
-        self.clone = clone
-        self.indir = indir
+    def __init__(self, prc, gen):
+        self.prc = prc
+        self.gen = gen
 
     @property
-    def as_tuple(self):
-        return self.project, self.run, self.clone
+    def is_done(self):
+        return os.path.exists("{outdir}/{prc:dir}/{code}/{gen}.{fext}"
+                              .format(outdir=config.outdir,
+                                      prc=self.prc,
+                                      code=self.code,
+                                      gen=self.gen,
+                                      fext=self.fext))
 
-    def __format__(self, format_spec):
-        if format_spec == 'dir':
-            return "/".join(str(s) for s in self.as_tuple)
-        elif format_spec == 'indir':
-            return self.indir
-        else:
-            return "-".join(str(s) for s in self.as_tuple)
+    def do(self, prior):
+        out_fn = ("{outdir}/{prc:dir}/{code}/{gen}.nc"
+                  .format(outdir=config.outdir,
+                          code=self.code,
+                          prc=self.prc,
+                          gen=self.gen)
+                  )
+        out_dir = os.path.dirname(out_fn)
+        os.makedirs(out_dir, exist_ok=True)
+        self.do_file(prior, out_fn)
+
+    def do_file(self, infn, outfn):
+        raise NotImplementedError
 
 
 class Strip(Task):
@@ -43,94 +51,44 @@ class Strip(Task):
         self.prc = prc
         self.gen = gen
 
-    pass
-
-
-class Center(Task):
-    def __init__(self, prc, gen):
-        self.prc = prc
-        self.gen = gen
-
     @property
     def depends(self):
-        yield from (Strip(self.prc, self.gen),)
+        yield from []
 
     @property
     def is_done(self):
-        return os.path.exists("{outdir}/{prc:dir}/ctr/{gen}.nc"
-                              .format(outdir=config.outdir,
-                                      prc=self.prc,
-                                      gen=self.gen))
+        return True
 
-    def do(self, strip):
-        subprocess.check_call(
-                ['touch',
-                 "{outdir}/{prc:dir}/ctr/{gen}.nc"
-                     .format(outdir=config.outdir,
-                             prc=self.prc,
-                             gen=self.gen)
-                 ],
-        )
+
+class Center(PRCTask):
+    code = 'ctr'
+
+    @property
+    def depends(self):
+        yield from [Strip(self.prc, self.gen)]
+
+    def do_file(self, infn, outfn):
+        subprocess.call(['touch', 'outfn'])
 
 
 class Project(Task):
-    supported_types = ['xa4', 'x21', 'bw']
-
-    def __init__(self, project, type):
+    def __init__(self, project, projtype):
         self.project = project
-
-        ma = re.match(r"([a-z]+)([0-9]+)", project)
-        if ma is None:
-            raise ValueError("Invalid project name. "
-                             "Must be of the form xx12345")
-        self.projcode = ma.group(1)
-        self.projnum = int(ma.group(2))
-
-        if type not in self.supported_types:
-            raise ValueError("Invalid project type: {}. "
-                             "Must be one of {}"
-                             .format(type, self.supported_types))
-        self.projtype = type
+        self.projcode, self.projnum = parse_project(project)
+        self.projtype = parse_projtype(projtype)
 
         self.indir = "{indir}/{project}".format(indir=config.indir,
                                                 project=project)
-
         if not os.path.exists(self.indir):
             raise ValueError("Project in directory doesn't exist. "
                              "Looking for {}".format(self.indir))
 
         self._depends = None
 
-    def _get_prcs_fah(self):
-        def prc_from_fn(fn):
-            ma = re.match(r"{indir}/RUN(\d+)/CLONE(\d+)/"
-                          .format(indir=self.indir), fn)
-            return PRC(self.project, int(ma.group(1)), int(ma.group(2)), fn)
-
-        yield from (prc_from_fn(fn)
-                    for fn in glob.iglob("{indir}/RUN*/CLONE*/"
-                                         .format(indir=self.indir)))
-
-    def _get_prcs(self):
-        if self.projtype in ['xa4', 'x21']:
-            yield from self._get_prcs_fah()
-
-    def _get_gens(self, prc):
-        if self.projtype == 'xa4':
-            gen_re = re.compile(r"frame(\d+).xtc")
-            yield from (int(gen_re.search(fn).match(1))
-                        for fn in glob.iglob("{prc:indir}/frame*.xtc"
-                                             .format(prc=prc)))
-        elif self.projtype == 'x21':
-            gen_re = re.compile(r"results-(\d\d\d)/")
-            yield from (int(gen_re.search(fn).match(1))
-                        for fn in glob.iglob("{prc:indir}/results-???/"
-                                             .format(prc=prc)))
-
     def _get_depends(self):
-        for prc in self._get_prcs():
-            for gen in self._get_gens(prc):
-                yield Strip(prc, gen)
+        for prc in get_prcs(self.project, self.projtype, self.indir):
+            for gen in get_gens(prc, self.projtype):
+                yield Center(prc, gen)
 
     @property
     def depends(self):
@@ -140,26 +98,6 @@ class Project(Task):
         yield from self._depends
 
 
-class MockLoadBalancedView:
-    def apply_async(self, func, args):
-        for a in args:
-            func(a)
-
-
-def execute_task(task, lbv=None):
-    if lbv is None:
-        lbv = MockLoadBalancedView()
-
-    all_dep_done = True
-    for dependency in task.depends:
-        all_dep_done = all_dep_done and dependency.is_done
-        if not dependency.is_done:
-            execute_task(dependency, lbv)
-
-    if all_dep_done:
-        return lbv.apply_async(task.do, task.depends)
-
-
 class NaV(Task):
     @property
     def depends(self):
@@ -167,7 +105,3 @@ class NaV(Task):
             Project("p9704", 'x21'),
             Project("p9752", 'xa4'),
         ]
-
-
-def main():
-    execute_task(NaV())
