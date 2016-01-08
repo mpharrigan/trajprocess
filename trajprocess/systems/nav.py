@@ -2,7 +2,7 @@ from .. import tasks
 
 from ..config import config
 from ..process import run_trjconv, convert_to_nc
-from ..postprocess import call_cpptraj_stp
+from ..postprocess import call_cpptraj_stp, call_cpptraj_ctr
 
 
 class Trjconv(tasks.PRCTask):
@@ -70,9 +70,14 @@ class Center(tasks.PRCTask):
     """Use cpptraj to center and image."""
     code = 'ctr'
     dep_class = Strip
+    needs_log = True
 
     def do_file(self, infn, outfn, logfn=None):
-        pass
+        call_cpptraj_ctr(
+                infn, outfn, logfn,
+                stptopdir="{outdir}/prmtops".format(outdir=config.outdir),
+                struct=self.prc.meta['struct'],
+        )
 
 
 class Projectx21(tasks.StructPerRun, tasks.Projectx21):

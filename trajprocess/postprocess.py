@@ -11,7 +11,7 @@ import shutil
 import logging
 from datetime import datetime
 from jinja2 import Template
-from tempfile import TemporaryDirectory
+from tempfile import TemporaryDirectory, NamedTemporaryFile
 
 log = logging.getLogger(__name__)
 
@@ -96,61 +96,28 @@ def stp(info, systemcode):
     print(removes, num_to_keeps, topdir)
 
 
-def _call_cpptraj_ctr(info, template, gen, gen_fn):
-    workfile = "{outdir}/cpptraj.tmp".format(**info['ctr'])
-    out_fn = "{outdir}/{g}.nc".format(g=gen, **info['ctr'])
-
-    log.debug("Centering {}".format(out_fn))
-
-    with open(workfile, 'w') as f:
-        f.write(template.format(gen_fn=gen_fn, out_fn=out_fn, **info))
-
-    with open(info['ctr']['log'], 'a') as logf:
-        subprocess.check_call(
-                ['cpptraj', '-i', workfile],
-                stderr=subprocess.STDOUT, stdout=logf
-        )
-    os.remove(workfile)
-    return out_fn
-
-
-def _ctr(info):
-    info['ctr'] = {
-        'log': "{workdir}/ctr.log".format(**info['path']),
-        'outdir': "{workdir}/ctr".format(**info['path']),
-        'date': datetime.now().isoformat(),
-        'gens': [] if 'ctr' not in info else info['ctr']['gens'],
-    }
-
-    if not info['stp']['success']:
-        info['ctr']['success'] = False
-        return info
+def call_cpptraj_ctr(infn, outfn, logfn, *, stptopdir, struct):
+    # Make sure this is sync-ed with above
+    topfn = ("{stptopdir}/{struct}.strip.prmtop"
+             .format(stptopdir=stptopdir, struct=struct))
 
     template = "\n".join([
-        "parm {stp[outtop]}",
-        "trajin {gen_fn}",
+        "parm {topfn}",
+        "trajin {infn}",
         "autoimage",
         "center @CA",
         "image",
-        "trajout {out_fn}",
+        "trajout {outfn}",
         "",
     ])
 
-    done = len(info['ctr']['gens'])
-    log.info("CTR: {meta[project]}-{meta[run]}-{meta[clone]}. "
-             "Using cpptraj to image and center. "
-             "Done {done}, todo {todo}"
-             .format(done=done, todo=len(info['stp']['gens']) - done, **info))
-    os.makedirs(info['ctr']['outdir'], exist_ok=True)
-    for gen, gen_fn in enumerate(info['stp']['gens']):
-        if gen < done:
-            continue
-        out_fn = _call_cpptraj_ctr(info, template, gen, gen_fn)
-        info['ctr']['gens'] += [out_fn]
+    with NamedTemporaryFile('w', delete=False) as tf:
+        tf.write(template.format(topfn=topfn, infn=infn, outfn=outfn))
+        tf.flush()
+        os.fsync(tf.fileno())
 
-    info['ctr']['success'] = True
-    return info
-
-
-def ctr(info, systemcode):
-    return _ctr(info)
+        with open(logfn, 'a') as logf:
+            subprocess.check_call(
+                    ['cpptraj', '-i', tf.name],
+                    stderr=subprocess.STDOUT, stdout=logf
+            )
