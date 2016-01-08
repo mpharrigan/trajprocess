@@ -1,7 +1,7 @@
 from ..tasks import Task, PRCTask, RawXTC, Projectx21 as _Projectx21, \
     ProjectxA4 as _ProjectxA4
 
-from ..process import run_trjconv
+from ..process import run_trjconv, convert_to_nc
 
 
 class Trjconv(PRCTask):
@@ -17,10 +17,12 @@ class Trjconv(PRCTask):
 
     def do_file(self, infn, outfn, logfn=None):
         assert self.prc.project == 'p9752', "stride 4 makes no sense otherwise."
-        run_trjconv(infn, outfn,
-                    log_fn=logfn,
-                    top_fn=self.prc.meta['tpr_fn'],
-                    stride=4)
+        run_trjconv(
+                infn, outfn,
+                log_fn=logfn,
+                top_fn=self.prc.meta['tpr_fn'],
+                stride=4,
+        )
 
 
 class ConvertToNC(PRCTask):
@@ -41,6 +43,12 @@ class ConvertToNC(PRCTask):
             yield RawXTC(self.prc)
 
     def do_file(self, infn, outfn, logfn=None):
+        overlap = 'has_overlapping_frames' in self.prc.meta
+        convert_to_nc(
+                infn, outfn,
+                has_overlapping_frames=overlap,
+        )
+
         pass
 
 

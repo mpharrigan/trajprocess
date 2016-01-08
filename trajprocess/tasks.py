@@ -154,6 +154,7 @@ class ProjectxA4(FahProject):
 
     def _configure(self, prc):
         prc.meta['needs_trjconv'] = True
+        prc.meta['has_overlapping_frames'] = True
         prc.meta['tpr_fn'] = ("{indir}/frame0.tpr"
                               .format(indir=os.path.dirname(prc.in_fn)))
         return prc

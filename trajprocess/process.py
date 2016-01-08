@@ -110,18 +110,6 @@ def convert_to_nc(in_fn, out_fn, *, has_overlapping_frames):
             _nc_a_chunk(xtc, nc, has_overlapping_frames)
 
 
-def _cnv2(info, *, has_overlapping_frames, chunk=100):
-    info['cnv2'] = {
-        'date': datetime.now().isoformat(),
-        'chunk': chunk,
-        'had_overlapping_frames': has_overlapping_frames,
-        'log': "{workdir}/cnv2.log".format(**info['path']),
-        'outdir': "{workdir}/cnv2".format(**info['path']),
-        'outext': 'nc',
-        'gens': [] if 'cnv2' not in info else info['cnv2']['gens'],
-    }
-
-
 def cnv1(info, projcode):
     if info['meta']['project'] == 'p9752':
         stride = 4
@@ -151,7 +139,7 @@ def cnv2(info, projcode):
     else:
         overlap = False
 
-    return _cnv2(
-            info,
+    return convert_to_nc(
+            info['infn'], info['outfn'],
             has_overlapping_frames=overlap
     )
