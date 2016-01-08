@@ -5,7 +5,7 @@ class PRC:
         self.clone = clone
         self.gen = gen
         self.in_fn = in_fn
-        self.flags = set()
+        self.meta = dict()
 
     @property
     def as_tuple(self):
