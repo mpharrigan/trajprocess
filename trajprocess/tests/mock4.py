@@ -17,6 +17,9 @@ def mock_project():
     os.mkdir("trajprocess.in.4")
     os.symlink("../PROJ9704", "trajprocess.in.4/p9704")
     os.symlink("../PROJ9752", "trajprocess.in.4/p9752")
+    os.symlink("../structs-p9704.json", "trajprocess.in.4/p9704-structs.json")
+    os.symlink("../structs-p9752.json", "trajprocess.in.4/p9752-structs.json")
+    os.symlink("../tops-p9704", "trajprocess.in.4/p9704-tops")
 
 
 def cleanup():

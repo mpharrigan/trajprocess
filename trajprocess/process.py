@@ -110,6 +110,9 @@ def convert_to_nc(in_fn, out_fn, *, has_overlapping_frames):
             _nc_a_chunk(xtc, nc, has_overlapping_frames)
 
 
+
+# TODO: remove below
+
 def cnv1(info, projcode):
     if info['meta']['project'] == 'p9752':
         stride = 4

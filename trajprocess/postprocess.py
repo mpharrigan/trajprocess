@@ -11,6 +11,7 @@ import shutil
 import logging
 from datetime import datetime
 from jinja2 import Template
+from tempfile import TemporaryDirectory
 
 log = logging.getLogger(__name__)
 
@@ -24,70 +25,8 @@ def _norm_cpptraj(cpptraj_selection):
         .replace("@", "atm-")
 
 
-def _call_cpptraj_stp(info, template, gen, removes, prevs, cumprevs,
-                      num_to_keeps):
-    # Warning: I use workdir as the name for the proj-run-clone directory too
-    # sorry
-    workdir = ("/dev/shm/trajprocess/{project}/{run}/{clone}/{gen}"
-               .format(gen=gen, **info['meta']))
-    os.makedirs(workdir)
-
-    varszip = zip(removes, prevs, prevs[1:], cumprevs, num_to_keeps)
-    for vars in varszip:
-        remove, prev, curr, cumprev, num = vars
-        workfile = "{workdir}/cpptraj.{curr}.tmp"
-        workfile = workfile.format(curr=curr, workdir=workdir)
-
-        with open(workfile, 'w') as f:
-            f.write(template.render(
-                remove=remove, prev=prev, curr=curr, cumprev=cumprev, num=num,
-                workdir=workdir, g=gen, **info
-            ))
-
-        with open(info['stp']['log'], 'a') as logf:
-            subprocess.check_call(
-                ['cpptraj', '-i', workfile],
-                stderr=subprocess.STDOUT, stdout=logf
-            )
-
-    # Move results
-    tmp_fn = "{workdir}/{final}.nc".format(workdir=workdir, final=prevs[-1])
-    out_fn = "{outdir}/{g}.nc".format(g=gen, **info['stp'])
-    log.debug("Called cpptraj and moved result {}".format(out_fn))
-    shutil.move(tmp_fn, out_fn)
-
-    # Move prmtop if it doesn't already exist
-    if not os.path.exists(info['stp']['outtop']):
-        tmp_fn = ("{workdir}/{cumfinal}.{struct}.prmtop"
-                  .format(workdir=workdir, cumfinal=cumprevs[-1],
-                          struct=info['top']['struct']))
-        shutil.move(tmp_fn, info['stp']['outtop'])
-
-    # Remove files
-    shutil.rmtree(workdir)
-    return out_fn
-
-
-def _stp(info, *, removes, num_to_keeps, topdir):
-    info['stp'] = {
-        'log': "{workdir}/stp.log".format(**info['path']),
-        'outdir': "{workdir}/stp".format(**info['path']),
-        'topdir': topdir,
-        'removes': removes,
-        'num_to_keeps': num_to_keeps,
-        'date': datetime.now().isoformat(),
-        'gens': [] if 'stp' not in info else info['stp']['gens'],
-    }
-
-    if not info['cnv2']['success']:
-        info['stp']['success'] = False
-        return info
-
-    # Make sure this comes after the success check
-    # info['stp'] mat not be filled in.
-    info['stp']['outtop'] = ("{stp[topdir]}/{top[struct]}.strip.prmtop"
-                             .format(**info))
-
+def call_cpptraj_stp(infn, outfn, logfn, *, removes,
+                     num_to_keeps, prmtopdir, outtopdir, struct):
     prevs = [None] + [_norm_cpptraj(remove) for remove in removes]
 
     # Ugh. cpptraj appends names instead of letting you specify the actual
@@ -96,10 +35,10 @@ def _stp(info, *, removes, num_to_keeps, topdir):
 
     template = Template("\n".join([
         "{% if prev is none %}",
-        "parm {{stp['topdir']}}/{{top['struct']}}.prmtop",
-        "trajin {{cnv2['gens'][g]}}",
+        "parm {{topdir}}/{{struct}}.prmtop",
+        "trajin {{infn}}",
         "{% else %}",
-        "parm {{workdir}}/{{cumprev}}.{{top['struct']}}.prmtop",
+        "parm {{workdir}}/{{cumprev}}.{{struct}}.prmtop",
         "trajin {{workdir}}/{{prev}}.nc",
         "{% endif %}",
         "solvent {{remove}}",
@@ -108,22 +47,38 @@ def _stp(info, *, removes, num_to_keeps, topdir):
         ""
     ]))
 
-    done = len(info['stp']['gens'])
-    log.info("STP: {meta[project]}-{meta[run]}-{meta[clone]}. "
-             "Using cpptraj to strip closest. "
-             "Done {done}, todo {todo}"
-             .format(done=done, todo=len(info['cnv2']['gens']) - done, **info))
-    os.makedirs(info['stp']['outdir'], exist_ok=True)
-    for gen, gen_fn in enumerate(info['cnv2']['gens']):
-        if gen < done:
-            continue
-        out_fn = _call_cpptraj_stp(info, template, gen, removes, prevs,
-                                   cumprevs, num_to_keeps)
-        info['stp']['gens'] += [out_fn]
+    varszip = zip(removes, prevs, prevs[1:], cumprevs, num_to_keeps)
+    with TemporaryDirectory(dir='/dev/shm', prefix='trajproc-') as td:
+        for vars in varszip:
+            remove, prev, curr, cumprev, num = vars
+            workfile = "{td}/cpptraj.{curr}.tmp"
+            workfile = workfile.format(curr=curr, td=td)
 
-    info['stp']['success'] = True
+            with open(workfile, 'w') as f:
+                f.write(template.render(
+                        topdir=prmtopdir, struct=struct, infn=infn,
+                        workdir=td, cumprev=cumprev, prev=prev, curr=curr,
+                        remove=remove, num=num,
+                ))
 
-    return info
+            with open(logfn, 'a') as logf:
+                subprocess.check_call(
+                        ['cpptraj', '-i', workfile],
+                        stderr=subprocess.STDOUT, stdout=logf
+                )
+
+        # Move results
+        tmp_fn = "{td}/{final}.nc".format(td=td, final=prevs[-1])
+        shutil.move(tmp_fn, outfn)
+
+        # Move prmtop if it doesn't already exist
+        outtop = ("{outtopdir}/{struct}.strip.prmtop"
+                  .format(outtopdir=outtopdir, struct=struct))
+        if not os.path.exists(outtop):
+            os.makedirs(outtopdir, exist_ok=True)
+            tmp_fn = ("{td}/{cumfinal}.{struct}.prmtop"
+                      .format(td=td, cumfinal=cumprevs[-1], struct=struct))
+            shutil.move(tmp_fn, outtop)
 
 
 def stp(info, systemcode):
@@ -138,12 +93,7 @@ def stp(info, systemcode):
     else:
         raise ValueError
 
-    return _stp(
-        info,
-        removes=removes,
-        num_to_keeps=num_to_keeps,
-        topdir=topdir,
-    )
+    print(removes, num_to_keeps, topdir)
 
 
 def _call_cpptraj_ctr(info, template, gen, gen_fn):
@@ -157,8 +107,8 @@ def _call_cpptraj_ctr(info, template, gen, gen_fn):
 
     with open(info['ctr']['log'], 'a') as logf:
         subprocess.check_call(
-            ['cpptraj', '-i', workfile],
-            stderr=subprocess.STDOUT, stdout=logf
+                ['cpptraj', '-i', workfile],
+                stderr=subprocess.STDOUT, stdout=logf
         )
     os.remove(workfile)
     return out_fn

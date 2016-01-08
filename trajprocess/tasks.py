@@ -1,11 +1,12 @@
 import os
 import subprocess
+import json
 import re
 import glob
 
 from .prc import PRC
 from .project import parse_project, parse_projtype
-from .app import config
+from .config import config
 
 
 class Task:
@@ -144,6 +145,24 @@ class FahProject(Project):
             yield int(self.gen_re.search(fn).group(1)), fn
 
 
+class StructPerRun:
+    def _configure(self, prc):
+        prc = super()._configure(prc)
+        if not hasattr(self, 'structs'):
+            with open("{indir}/{prc.project}-structs.json"
+                              .format(indir=config.indir, prc=prc)) as f:
+                self.structs = json.load(f)
+
+        prc.meta['struct'] = self.structs[str(prc.run)]['struct']
+        prc.meta['top_fext'] = self.structs[str(prc.run)]['fext']
+        prc.meta['top_dir'] = ("{indir}/{prc.project}-tops/"
+                               .format(indir=config.indir, prc=prc))
+        prc.meta['top_fn'] = ("{prc.meta[top_dir]}/"
+                              "{prc.meta[struct]}.{prc.meta[top_fext]}"
+                              .format(indir=config.indir, prc=prc))
+        return prc
+
+
 class Projectx21(FahProject):
     gen_re = re.compile(r"results-(\d\d\d)/")
     gen_glob = "{prc_dir}/results-???/positions.xtc"
@@ -154,6 +173,7 @@ class ProjectxA4(FahProject):
     gen_glob = "{prc_dir}/frame*.xtc"
 
     def _configure(self, prc):
+        prc = super()._configure(prc)
         prc.meta['needs_trjconv'] = True
         prc.meta['has_overlapping_frames'] = True
         prc.meta['tpr_fn'] = ("{indir}/frame0.tpr"
