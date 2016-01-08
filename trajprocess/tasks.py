@@ -21,6 +21,15 @@ class Task:
         return
 
 
+class RawXTC(Task):
+    def __init__(self, prc):
+        self.prc = prc
+
+    @property
+    def fn(self):
+        return "{prc:raw}".format(prc=self.prc)
+
+
 class PRCTask(Task):
     code = "unsp"
     fext = 'nc'
@@ -78,15 +87,6 @@ class PRCTask(Task):
         raise NotImplementedError
 
 
-class RawXTC(Task):
-    def __init__(self, prc):
-        self.prc = prc
-
-    @property
-    def fn(self):
-        return "{prc:raw}".format(prc=self.prc)
-
-
 class Project(Task):
     dep_class = PRCTask
     projtype = 'x21'
@@ -104,7 +104,7 @@ class Project(Task):
 
         self._depends = None
 
-    def _get_depends(self):
+    def _get_prcs(self):
         for run, clone, prc_dir in self.get_run_clones(self.indir):
             for gen, rawfn in self.get_gens(prc_dir):
                 yield self._configure(PRC(self.project, run, clone, gen, rawfn))
@@ -123,7 +123,8 @@ class Project(Task):
     @property
     def depends(self):
         if self._depends is None:
-            self._depends = list(self._get_depends())
+            self._depends = list(self.dep_class(prc)
+                                 for prc in self._get_prcs())
         yield from self._depends
 
 

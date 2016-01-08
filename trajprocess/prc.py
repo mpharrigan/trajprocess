@@ -9,7 +9,7 @@ class PRC:
 
     @property
     def as_tuple(self):
-        return self.project, self.run, self.clone, self.gen
+        return self.project, self.run, self.clone
 
     def __format__(self, format_spec):
         if format_spec == 'dir':
@@ -19,4 +19,4 @@ class PRC:
         elif format_spec == 'raw':
             return self.in_fn
         else:
-            return "-".join(str(s) for s in self.as_tuple)
+            return "-".join(str(s) for s in list(self.as_tuple) + [self.gen])
