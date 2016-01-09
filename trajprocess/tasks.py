@@ -23,6 +23,9 @@ class Task:
     def do(self, tasks):
         return
 
+    def __str__(self):
+        return self.__class__.__name__
+
 
 class RawXTC(Task):
     def __init__(self, prc):
@@ -31,6 +34,9 @@ class RawXTC(Task):
     @property
     def fn(self):
         return "{prc:raw}".format(prc=self.prc)
+
+    def __str__(self):
+        return "<{} {}>".format(self.__class__.__name__, self.prc)
 
 
 class Clean(Task):
@@ -53,12 +59,12 @@ class Clean(Task):
 
     @property
     def is_done(self):
-        for task in self.ephemeral_tasks:
-            if os.path.exists(task.fn):
-                return False
-            if self.delete_logs and os.path.exists(task.log_fn):
-                return False
-        return True
+        """This is never done: run it every time!
+
+        Otherwise, jobs will be queued before there's anything to clean up
+        and it will think it's done.
+        """
+        return False
 
     def _delete_empty_dirs(self):
         for root, dirs, files in os.walk(config.outdir, topdown=False):
@@ -87,6 +93,9 @@ class Clean(Task):
 
         if self.delete_empty_dirs:
             self._delete_empty_dirs()
+
+    def __str__(self):
+        return "<{} {}>".format(self.__class__.__name__, self.prc)
 
 
 class PRCTask(Task):
@@ -140,7 +149,7 @@ class PRCTask(Task):
             self.do_file(in_fn, out_fn)
 
     def __str__(self):
-        return "<{} {}>".format(self.prc, self.code)
+        return "<{} {}>".format(self.__class__.__name__, self.prc)
 
     def do_file(self, infn, outfn, logfn=None):
         raise NotImplementedError
