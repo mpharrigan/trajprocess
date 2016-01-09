@@ -101,7 +101,7 @@ class ProjectxA4(tasks.StructPerRun, tasks.ProjectxA4):
     dep_class = Clean
 
 
-class NaV(tasks.Task):
+class NaV(tasks.Dummy, tasks.Task):
     depends = [
         Projectx21("p9704"),
         ProjectxA4("p9752"),

@@ -11,6 +11,7 @@ from .project import parse_project, parse_projtype
 
 class Task:
     is_ephemeral = False
+    is_dummy = False
 
     @property
     def depends(self):
@@ -18,16 +19,27 @@ class Task:
 
     @property
     def is_done(self):
-        return True
+        raise NotImplementedError
 
     def do(self, tasks):
-        return
+        raise NotImplementedError
 
     def __str__(self):
         return self.__class__.__name__
 
 
-class RawXTC(Task):
+class Dummy:
+    is_dummy = True
+
+    def do(self, tasks):
+        return
+
+    @property
+    def is_done(self):
+        return True
+
+
+class RawXTC(Dummy, Task):
     def __init__(self, prc):
         self.prc = prc
 
@@ -59,12 +71,23 @@ class Clean(Task):
 
     @property
     def is_done(self):
-        """This is never done: run it every time!
 
-        Otherwise, jobs will be queued before there's anything to clean up
-        and it will think it's done.
-        """
-        return False
+        # The following check is important:
+        # If non of them have run, then there's nothing to clean up (yet)
+        # and it thinks it's done! It will not be scheduled by an async
+        # task scheduler.
+        immediate_dep = self.dep_class(self.prc)
+        if not immediate_dep.is_done:
+            return False
+
+        for task in self.ephemeral_tasks:
+            if os.path.exists(task.fn):
+                return False
+
+            if self.delete_logs and os.path.exists(task.log_fn):
+                return False
+
+        return True
 
     def _delete_empty_dirs(self):
         for root, dirs, files in os.walk("{prc:dir}".format(prc=self.prc),
@@ -156,7 +179,7 @@ class PRCTask(Task):
         raise NotImplementedError
 
 
-class Project(Task):
+class Project(Dummy, Task):
     dep_class = PRCTask
     projtype = 'x21'
 
