@@ -67,7 +67,8 @@ class Clean(Task):
         return False
 
     def _delete_empty_dirs(self):
-        for root, dirs, files in os.walk(config.outdir, topdown=False):
+        for root, dirs, files in os.walk("{prc:dir}".format(prc=self.prc),
+                                         topdown=False):
             for d in dirs:
                 try:
                     os.rmdir(os.path.join(root, d))
