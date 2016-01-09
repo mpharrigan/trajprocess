@@ -1,8 +1,7 @@
 from .. import tasks
-
 from ..config import config
-from ..process import run_trjconv, convert_to_nc
 from ..postprocess import call_cpptraj_stp, call_cpptraj_ctr
+from ..process import run_trjconv, convert_to_nc
 
 
 class Trjconv(tasks.PRCTask):
@@ -15,6 +14,7 @@ class Trjconv(tasks.PRCTask):
     fext = 'xtc'
     dep_class = tasks.RawXTC
     needs_log = True
+    is_ephemeral = True
 
     def do_file(self, infn, outfn, logfn=None):
         assert self.prc.project == 'p9752', "stride 4 makes no sense otherwise."
@@ -35,6 +35,7 @@ class ConvertToNC(tasks.PRCTask):
     prc metadata.
     """
     code = 'cnv2'
+    is_ephemeral = True
 
     @property
     def depends(self):
@@ -54,6 +55,7 @@ class Strip(tasks.PRCTask):
     code = 'stp'
     dep_class = ConvertToNC
     needs_log = True
+    is_ephemeral = True
 
     def do_file(self, infn, outfn, logfn=None):
         call_cpptraj_stp(
@@ -80,12 +82,23 @@ class Center(tasks.PRCTask):
         )
 
 
-class Projectx21(tasks.StructPerRun, tasks.Projectx21):
+class Clean(tasks.Clean):
+    ephemeral_task_classes = [
+        Strip,
+        ConvertToNC,
+        Trjconv
+    ]
     dep_class = Center
+    delete_empty_dirs = True
+    delete_logs = True
+
+
+class Projectx21(tasks.StructPerRun, tasks.Projectx21):
+    dep_class = Clean
 
 
 class ProjectxA4(tasks.StructPerRun, tasks.ProjectxA4):
-    dep_class = Center
+    dep_class = Clean
 
 
 class NaV(tasks.Task):

@@ -1,15 +1,17 @@
-import os
-import subprocess
-import json
-import re
+import errno
 import glob
+import json
+import os
+import re
 
+from .config import config
 from .prc import PRC
 from .project import parse_project, parse_projtype
-from .config import config
 
 
 class Task:
+    is_ephemeral = False
+
     @property
     def depends(self):
         yield from []
@@ -29,6 +31,62 @@ class RawXTC(Task):
     @property
     def fn(self):
         return "{prc:raw}".format(prc=self.prc)
+
+
+class Clean(Task):
+    ephemeral_task_classes = []
+    dep_class = RawXTC
+    delete_logs = False
+    delete_empty_dirs = True
+
+    def __init__(self, prc):
+        self.prc = prc
+
+    @property
+    def depends(self):
+        yield self.dep_class(self.prc)
+
+    @property
+    def ephemeral_tasks(self):
+        for tsk_class in self.ephemeral_task_classes:
+            yield tsk_class(self.prc)
+
+    @property
+    def is_done(self):
+        for task in self.ephemeral_tasks:
+            if os.path.exists(task.fn):
+                return False
+            if self.delete_logs and os.path.exists(task.log_fn):
+                return False
+        return True
+
+    def _delete_empty_dirs(self):
+        for root, dirs, files in os.walk(config.outdir, topdown=False):
+            for d in dirs:
+                try:
+                    os.rmdir(os.path.join(root, d))
+                except OSError as e:
+                    if e.errno == errno.ENOTEMPTY:
+                        pass
+                    else:
+                        print(root, dirs, files, d)
+                        raise
+
+    def do(self, tasks):
+        for task in self.ephemeral_tasks:
+            try:
+                os.remove(task.fn)
+            except FileNotFoundError:
+                pass
+
+            if self.delete_logs:
+                try:
+                    os.remove(task.log_fn)
+                except FileNotFoundError:
+                    pass
+
+        if self.delete_empty_dirs:
+            self._delete_empty_dirs()
 
 
 class PRCTask(Task):

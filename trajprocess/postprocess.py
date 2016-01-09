@@ -5,13 +5,13 @@
 
 """
 
-import subprocess
+import logging
 import os
 import shutil
-import logging
-from datetime import datetime
-from jinja2 import Template
+import subprocess
 from tempfile import TemporaryDirectory, NamedTemporaryFile
+
+from jinja2 import Template
 
 log = logging.getLogger(__name__)
 
@@ -81,21 +81,6 @@ def call_cpptraj_stp(infn, outfn, logfn, *, removes,
             shutil.move(tmp_fn, outtop)
 
 
-def stp(info, systemcode):
-    if systemcode == 'nav':
-        removes = [":WAT", ":MY", "@Na+", "@Cl-"]
-        num_to_keeps = [10000, 100, 20, 20]
-        topdir = "tops-p9704"
-    elif systemcode == 'trek':
-        removes = [":WAT", ":PC", ":PE", "@K+", "@Cl-"]
-        num_to_keeps = [5000, 30, 30, 20, 20]
-        topdir = "tops-p9712"
-    else:
-        raise ValueError
-
-    print(removes, num_to_keeps, topdir)
-
-
 def call_cpptraj_ctr(infn, outfn, logfn, *, stptopdir, struct):
     # Make sure this is sync-ed with above
     topfn = ("{stptopdir}/{struct}.strip.prmtop"
@@ -121,3 +106,20 @@ def call_cpptraj_ctr(infn, outfn, logfn, *, stptopdir, struct):
                     ['cpptraj', '-i', tf.name],
                     stderr=subprocess.STDOUT, stdout=logf
             )
+
+
+# TODO: remove below
+
+def stp(info, systemcode):
+    if systemcode == 'nav':
+        removes = [":WAT", ":MY", "@Na+", "@Cl-"]
+        num_to_keeps = [10000, 100, 20, 20]
+        topdir = "tops-p9704"
+    elif systemcode == 'trek':
+        removes = [":WAT", ":PC", ":PE", "@K+", "@Cl-"]
+        num_to_keeps = [5000, 30, 30, 20, 20]
+        topdir = "tops-p9712"
+    else:
+        raise ValueError
+
+    print(removes, num_to_keeps, topdir)

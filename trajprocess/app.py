@@ -1,5 +1,3 @@
-
-
 class MockLoadBalancedView:
     def apply_async(self, func, args):
         for a in args:
@@ -8,7 +6,10 @@ class MockLoadBalancedView:
 
 def _execute(task, lbv):
     for dep in task.depends:
-        _execute(dep, lbv)
+        if dep.is_ephemeral and task.is_done:
+            pass
+        else:
+            _execute(dep, lbv)
 
     if not task.is_done:
         lbv.apply_async(task.do, task.depends)

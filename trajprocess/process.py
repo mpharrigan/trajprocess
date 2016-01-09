@@ -9,7 +9,6 @@
 import logging
 import re
 import subprocess
-from datetime import datetime
 
 import mdtraj.utils
 import numpy as np
@@ -108,7 +107,6 @@ def convert_to_nc(in_fn, out_fn, *, has_overlapping_frames):
     with XTCTrajectoryFile(in_fn, 'r') as xtc:
         with NetCDFTrajectoryFile(out_fn, 'w') as nc:
             _nc_a_chunk(xtc, nc, has_overlapping_frames)
-
 
 
 # TODO: remove below
