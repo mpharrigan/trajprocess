@@ -10,7 +10,7 @@ class MockLoadBalancedView:
             func(a)
 
     @contextmanager
-    def temp_flags(self, after):
+    def temp_flags(self, **kwargs):
         yield
 
 
@@ -56,7 +56,7 @@ def _execute(task, lbv):
                 ars.append(ar)
 
     if not task.is_done:
-        with lbv.temp_flags(after=ars):
+        with lbv.temp_flags(after=ars, retries=10):
             return lbv.map_async(_run_function(task), list(task.depends))
 
 
