@@ -36,7 +36,7 @@ def dump(task, exc):
 
 class _run_function:
     def __init__(self, task):
-        self.task = self.task
+        self.task = task
 
     def __call__(self, depend):
         try:
