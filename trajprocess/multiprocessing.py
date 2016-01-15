@@ -1,8 +1,8 @@
-import multiprocessing
+import multiprocessing.pool
 from contextlib import contextmanager
 
 
-class Pool(multiprocessing.Pool):
+class Pool(multiprocessing.pool.Pool):
     def map_async(self, func, iterable, chunksize=None, callback=None,
                   error_callback=None):
         super().map(func, iterable, chunksize=1)
