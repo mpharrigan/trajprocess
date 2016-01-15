@@ -1,6 +1,4 @@
 from .. import tasks
-from ..config import config
-from ..postprocess import call_cpptraj_stp, call_cpptraj_ctr
 from ..process import run_trjconv, convert_to_nc
 
 
@@ -49,45 +47,11 @@ class ConvertToNC(tasks.PRCTask):
         convert_to_nc(infn, outfn, has_overlapping_frames=overlap)
 
 
-class Strip(tasks.PRCTask):
-    """Use cpptraj to strip all but closest x."""
-    code = 'stp'
-    dep_class = ConvertToNC
-    needs_log = True
-    is_ephemeral = True
-
-    def do_file(self, infn, outfn, logfn=None):
-        call_cpptraj_stp(
-                infn, outfn, logfn,
-                removes=[":WAT", ":MY", "@Na+", "@Cl-"],
-                num_to_keeps=[10000, 100, 20, 20],
-                prmtopdir="{indir}/p9704-tops".format(indir=config.indir),
-                outtopdir="{outdir}/prmtops".format(outdir=config.outdir),
-                struct=self.prc.meta['struct'],
-        )
-
-
-class Center(tasks.PRCTask):
-    """Use cpptraj to center and image."""
-    code = 'ctr'
-    dep_class = Strip
-    needs_log = True
-
-    def do_file(self, infn, outfn, logfn=None):
-        call_cpptraj_ctr(
-                infn, outfn, logfn,
-                stptopdir="{outdir}/prmtops".format(outdir=config.outdir),
-                struct=self.prc.meta['struct'],
-        )
-
-
 class Clean(tasks.Clean):
     ephemeral_task_classes = [
-        Strip,
-        ConvertToNC,
-        Trjconv
+        Trjconv,
     ]
-    dep_class = Center
+    dep_class = ConvertToNC
     delete_empty_dirs = True
     delete_logs = True
 
