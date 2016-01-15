@@ -34,15 +34,16 @@ def dump(task, exc):
         traceback.print_tb(tb, file=f)
 
 
-def _run_function(task):
-    def _inner_run_function(depend):
-        try:
-            task.do(depend)
-            return str(task)
-        except Exception as exc:
-            dump(task, exc)
+class _run_function:
+    def __init__(self, task):
+        self.task = self.task
 
-    return _inner_run_function
+    def __call__(self, depend):
+        try:
+            self.task.do(depend)
+            return str(self.task)
+        except Exception as exc:
+            dump(self.task, exc)
 
 
 def _execute(task, lbv):
