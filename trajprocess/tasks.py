@@ -6,7 +6,7 @@ import re
 
 from .config import config
 from .prc import PRCG
-from .project import parse_project, parse_projtype
+from .project import parse_project
 
 
 class Task:
@@ -180,58 +180,77 @@ class PRCGTask(Task):
 
 
 class Project(Dummy, Task):
-    dep_class = PRCGTask
-    projtype = 'x21'
+    dep_class = ProjRunClone
 
     def __init__(self, project):
         self.project = project
-        self.projcode, self.projnum = parse_project(project)
-        parse_projtype(self.projtype)
-
-        self.indir = "{indir}/{project}".format(indir=config.indir,
-                                                project=project)
+        self.indir = ("{indir}/{project}"
+                      .format(indir=config.indir, project=project))
         if not os.path.exists(self.indir):
             raise ValueError("Project in directory doesn't exist. "
                              "Looking for {}".format(self.indir))
 
         self._depends = None
 
-    def _get_prcgs(self):
-        for run, clone, prc_dir in self.get_run_clones(self.indir):
-            for gen, rawfn in self.get_gens(prc_dir):
-                yield self._configure(
-                        PRCG(self.project, run, clone, gen, rawfn)
-                )
-
-    def _configure(self, prcg):
-        return prcg
-
     def get_run_clones(self, indir):
-        for fn in glob.iglob("*/"):
+        for fn in glob.iglob("{indir}/*".format(indir=indir)):
             yield 0, 0, fn
-
-    def get_gens(self, prc_dir):
-        for fn in glob.iglob("{prc_dir}/*.xtc".format(prc_dir=prc_dir)):
-            yield 0, fn
 
     @property
     def depends(self):
         if self._depends is None:
-            self._depends = list(self.dep_class(prcg)
-                                 for prcg in self._get_prcgs())
+            self._depends = list(
+                    self.dep_class(self.project, run, clone, prc_dir)
+                    for run, clone, prc_dir in self.get_run_clones(self.indir))
+        yield from self._depends
+
+
+class ProjRunClone(Dummy, Task):
+    dep_class = PRCGTask
+
+    def __init__(self, project, run, clone, indir):
+        self.project = project
+        self.run = run
+        self.clone = clone
+        self.indir = indir
+        self._depends = None
+
+    def _configure(self, prcg):
+        return prcg
+
+    def get_gens(self, prc_dir):
+        for fn in glob.iglob("{prc_dir}/*".format(prc_dir=prc_dir)):
+            yield 0, fn
+
+    def _get_prcgs(self):
+        for gen, rawfn in self.get_gens(self.indir):
+            yield self._configure(
+                    PRCG(self.project, self.run, self.clone, gen, rawfn)
+            )
+
+    @property
+    def depends(self):
+        if self._depends is None:
+            self._depends = list(
+                    self.dep_class(prcg)
+                    for prcg in self._get_prcgs()
+            )
         yield from self._depends
 
 
 class FahProject(Project):
     prc_glob = "{indir}/RUN*/CLONE*/"
     prc_re = r"{indir}/RUN(\d+)/CLONE(\d+)/"
-    gen_re = re.compile("")
-    gen_glob = ""
 
     def get_run_clones(self, indir):
         for fn in glob.iglob(self.prc_glob.format(indir=indir)):
             ma = re.match(self.prc_re.format(indir=indir), fn)
             yield int(ma.group(1)), int(ma.group(2)), fn
+
+
+class FahProjRunClone(ProjRunClone):
+    gen_re = re.compile("")
+    gen_glob = ""
 
     def get_gens(self, prc_dir):
         for fn in (glob.iglob(self.gen_glob.format(prc_dir=prc_dir))):
@@ -239,6 +258,13 @@ class FahProject(Project):
 
 
 class StructPerRun:
+    """Mix this in to ProjRunClone task to add struct information
+
+    This looks for a json file in the input directory of the form
+    {project}-structs.json
+    which is keyed by the run and has values "struct" and "fext"
+    """
+
     def _configure(self, prcg):
         prcg = super()._configure(prcg)
         if not hasattr(self, 'structs'):
@@ -256,12 +282,12 @@ class StructPerRun:
         return prcg
 
 
-class Projectx21(FahProject):
+class ProjRunClonex21(FahProjRunClone):
     gen_re = re.compile(r"results-(\d\d\d)/")
     gen_glob = "{prc_dir}/results-???/positions.xtc"
 
 
-class ProjectxA4(FahProject):
+class ProjRunClonexA4(FahProjRunClone):
     gen_re = re.compile(r"frame(\d+).xtc")
     gen_glob = "{prc_dir}/frame*.xtc"
 

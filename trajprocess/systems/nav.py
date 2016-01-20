@@ -92,12 +92,20 @@ class Clean(tasks.Clean):
     delete_logs = True
 
 
-class Projectx21(tasks.StructPerRun, tasks.Projectx21):
-    dep_class = Clean
+class PRCx21(tasks.StructPerRun, tasks.ProjRunClonex21):
+    pass
 
 
-class ProjectxA4(tasks.StructPerRun, tasks.ProjectxA4):
-    dep_class = Clean
+class PRCxA4(tasks.StructPerRun, tasks.ProjRunClonexA4):
+    pass
+
+
+class Projectx21(tasks.FahProject):
+    dep_class = PRCx21
+
+
+class ProjectxA4(tasks.FahProject):
+    dep_class = PRCxA4
 
 
 class NaV(tasks.Dummy, tasks.Task):
