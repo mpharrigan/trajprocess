@@ -1,5 +1,5 @@
-class PRC:
-    def __init__(self, project, run, clone, gen=None, in_fn=None):
+class PRCG:
+    def __init__(self, project, run, clone, gen, in_fn=None):
         self.project = project
         self.run = run
         self.clone = clone

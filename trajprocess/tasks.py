@@ -5,7 +5,7 @@ import os
 import re
 
 from .config import config
-from .prc import PRC
+from .prc import PRCG
 from .project import parse_project, parse_projtype
 
 
@@ -40,15 +40,15 @@ class Dummy:
 
 
 class RawXTC(Dummy, Task):
-    def __init__(self, prc):
-        self.prc = prc
+    def __init__(self, prcg):
+        self.prcg = prcg
 
     @property
     def fn(self):
-        return "{prc:raw}".format(prc=self.prc)
+        return "{prcg:raw}".format(prcg=self.prcg)
 
     def __str__(self):
-        return "<{} {}>".format(self.__class__.__name__, self.prc)
+        return "<{} {}>".format(self.__class__.__name__, self.prcg)
 
 
 class Clean(Task):
@@ -57,17 +57,17 @@ class Clean(Task):
     delete_logs = False
     delete_empty_dirs = True
 
-    def __init__(self, prc):
-        self.prc = prc
+    def __init__(self, prcg):
+        self.prcg = prcg
 
     @property
     def depends(self):
-        yield self.dep_class(self.prc)
+        yield self.dep_class(self.prcg)
 
     @property
     def ephemeral_tasks(self):
         for tsk_class in self.ephemeral_task_classes:
-            yield tsk_class(self.prc)
+            yield tsk_class(self.prcg)
 
     @property
     def is_done(self):
@@ -76,7 +76,7 @@ class Clean(Task):
         # If non of them have run, then there's nothing to clean up (yet)
         # and it thinks it's done! It will not be scheduled by an async
         # task scheduler.
-        immediate_dep = self.dep_class(self.prc)
+        immediate_dep = self.dep_class(self.prcg)
         if not immediate_dep.is_done:
             return False
 
@@ -90,7 +90,7 @@ class Clean(Task):
         return True
 
     def _delete_empty_dirs(self):
-        for root, dirs, files in os.walk("{prc:dir}".format(prc=self.prc),
+        for root, dirs, files in os.walk("{prcg:dir}".format(prcg=self.prcg),
                                          topdown=False):
             for d in dirs:
                 try:
@@ -119,37 +119,37 @@ class Clean(Task):
             self._delete_empty_dirs()
 
     def __str__(self):
-        return "<{} {}>".format(self.__class__.__name__, self.prc)
+        return "<{} {}>".format(self.__class__.__name__, self.prcg)
 
 
-class PRCTask(Task):
+class PRCGTask(Task):
     code = "unsp"
     fext = 'nc'
     dep_class = RawXTC
     needs_log = False
 
-    def __init__(self, prc):
-        self.prc = prc
+    def __init__(self, prcg):
+        self.prcg = prcg
 
     @property
     def depends(self):
-        yield self.dep_class(self.prc)
+        yield self.dep_class(self.prcg)
 
     @property
     def fn(self):
-        return ("{outdir}/{prc:dir}/{code}/{prc:gen}.{fext}"
+        return ("{outdir}/{prcg:dir}/{code}/{prc:gen}.{fext}"
                 .format(outdir=config.outdir,
                         code=self.code,
-                        prc=self.prc,
+                        prc=self.prcg,
                         fext=self.fext)
                 )
 
     @property
     def log_fn(self):
-        return ("{outdir}/{prc:dir}/{code}/{prc:gen}.{fext}"
+        return ("{outdir}/{prcg:dir}/{code}/{prc:gen}.{fext}"
                 .format(outdir=config.outdir,
                         code=self.code,
-                        prc=self.prc,
+                        prc=self.prcg,
                         fext='log')
                 )
 
@@ -173,14 +173,14 @@ class PRCTask(Task):
             self.do_file(in_fn, out_fn)
 
     def __str__(self):
-        return "<{} {}>".format(self.__class__.__name__, self.prc)
+        return "<{} {}>".format(self.__class__.__name__, self.prcg)
 
     def do_file(self, infn, outfn, logfn=None):
         raise NotImplementedError
 
 
 class Project(Dummy, Task):
-    dep_class = PRCTask
+    dep_class = PRCGTask
     projtype = 'x21'
 
     def __init__(self, project):
@@ -196,13 +196,15 @@ class Project(Dummy, Task):
 
         self._depends = None
 
-    def _get_prcs(self):
+    def _get_prcgs(self):
         for run, clone, prc_dir in self.get_run_clones(self.indir):
             for gen, rawfn in self.get_gens(prc_dir):
-                yield self._configure(PRC(self.project, run, clone, gen, rawfn))
+                yield self._configure(
+                        PRCG(self.project, run, clone, gen, rawfn)
+                )
 
-    def _configure(self, prc):
-        return prc
+    def _configure(self, prcg):
+        return prcg
 
     def get_run_clones(self, indir):
         for fn in glob.iglob("*/"):
@@ -215,8 +217,8 @@ class Project(Dummy, Task):
     @property
     def depends(self):
         if self._depends is None:
-            self._depends = list(self.dep_class(prc)
-                                 for prc in self._get_prcs())
+            self._depends = list(self.dep_class(prcg)
+                                 for prcg in self._get_prcgs())
         yield from self._depends
 
 
@@ -237,21 +239,21 @@ class FahProject(Project):
 
 
 class StructPerRun:
-    def _configure(self, prc):
-        prc = super()._configure(prc)
+    def _configure(self, prcg):
+        prcg = super()._configure(prcg)
         if not hasattr(self, 'structs'):
-            with open("{indir}/{prc.project}-structs.json"
-                              .format(indir=config.indir, prc=prc)) as f:
+            with open("{indir}/{prcg.project}-structs.json"
+                              .format(indir=config.indir, prcg=prcg)) as f:
                 self.structs = json.load(f)
 
-        prc.meta['struct'] = self.structs[str(prc.run)]['struct']
-        prc.meta['top_fext'] = self.structs[str(prc.run)]['fext']
-        prc.meta['top_dir'] = ("{indir}/{prc.project}-tops/"
-                               .format(indir=config.indir, prc=prc))
-        prc.meta['top_fn'] = ("{prc.meta[top_dir]}/"
-                              "{prc.meta[struct]}.{prc.meta[top_fext]}"
-                              .format(indir=config.indir, prc=prc))
-        return prc
+        prcg.meta['struct'] = self.structs[str(prcg.run)]['struct']
+        prcg.meta['top_fext'] = self.structs[str(prcg.run)]['fext']
+        prcg.meta['top_dir'] = ("{indir}/{prcg.project}-tops/"
+                                .format(indir=config.indir, prcg=prcg))
+        prcg.meta['top_fn'] = ("{prcg.meta[top_dir]}/"
+                               "{prcg.meta[struct]}.{prcg.meta[top_fext]}"
+                               .format(indir=config.indir, prcg=prcg))
+        return prcg
 
 
 class Projectx21(FahProject):
@@ -263,21 +265,21 @@ class ProjectxA4(FahProject):
     gen_re = re.compile(r"frame(\d+).xtc")
     gen_glob = "{prc_dir}/frame*.xtc"
 
-    def _configure(self, prc):
-        prc = super()._configure(prc)
-        prc.meta['needs_trjconv'] = True
-        prc.meta['has_overlapping_frames'] = True
-        prc.meta['tpr_fn'] = ("{indir}/frame0.tpr"
-                              .format(indir=os.path.dirname(prc.in_fn)))
-        return prc
+    def _configure(self, prcg):
+        prcg = super()._configure(prcg)
+        prcg.meta['needs_trjconv'] = True
+        prcg.meta['has_overlapping_frames'] = True
+        prcg.meta['tpr_fn'] = ("{indir}/frame0.tpr"
+                               .format(indir=os.path.dirname(prcg.in_fn)))
+        return prcg
 
 
 class ProjectBluewaters(Project):
-    def _configure(self, prc):
-        prc.meta['needs_trjconv'] = True
-        prc.meta['tpr_fn'] = ("{indir}/topol.tpr"
-                              .format(indir=os.path.dirname(prc.in_fn)))
-        return prc
+    def _configure(self, prcg):
+        prcg.meta['needs_trjconv'] = True
+        prcg.meta['tpr_fn'] = ("{indir}/topol.tpr"
+                               .format(indir=os.path.dirname(prcg.in_fn)))
+        return prcg
 
     def get_run_clones(self, indir):
         # TODO

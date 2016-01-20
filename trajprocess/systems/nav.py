@@ -4,7 +4,7 @@ from ..postprocess import call_cpptraj_stp, call_cpptraj_ctr
 from ..process import run_trjconv, convert_to_nc
 
 
-class Trjconv(tasks.PRCTask):
+class Trjconv(tasks.PRCGTask):
     """Run gmx trjconv on system simulated with gromacs mdrun
 
     mdrun doesn't reimage *at all*. This will exploit the tpr to image
@@ -17,39 +17,39 @@ class Trjconv(tasks.PRCTask):
     is_ephemeral = True
 
     def do_file(self, infn, outfn, logfn=None):
-        assert self.prc.project == 'p9752', "stride 4 makes no sense otherwise."
+        assert self.prcg.project == 'p9752', "stride 4 makes no sense otherwise"
         run_trjconv(
                 infn, outfn,
                 log_fn=logfn,
-                top_fn=self.prc.meta['tpr_fn'],
+                top_fn=self.prcg.meta['tpr_fn'],
                 stride=4,
         )
 
 
-class ConvertToNC(tasks.PRCTask):
+class ConvertToNC(tasks.PRCGTask):
     """Convert trajectories to Amber NetCDF
 
     cpptraj can't read gromacs xtc files.
 
     Note: This task will conditionally depend on Trjconv depending on
-    prc metadata.
+    prcg metadata.
     """
     code = 'cnv2'
     is_ephemeral = True
 
     @property
     def depends(self):
-        if "needs_trjconv" in self.prc.meta:
-            yield Trjconv(self.prc)
+        if "needs_trjconv" in self.prcg.meta:
+            yield Trjconv(self.prcg)
         else:
-            yield tasks.RawXTC(self.prc)
+            yield tasks.RawXTC(self.prcg)
 
     def do_file(self, infn, outfn, logfn=None):
-        overlap = 'has_overlapping_frames' in self.prc.meta
+        overlap = 'has_overlapping_frames' in self.prcg.meta
         convert_to_nc(infn, outfn, has_overlapping_frames=overlap)
 
 
-class Strip(tasks.PRCTask):
+class Strip(tasks.PRCGTask):
     """Use cpptraj to strip all but closest x."""
     code = 'stp'
     dep_class = ConvertToNC
@@ -63,11 +63,11 @@ class Strip(tasks.PRCTask):
                 num_to_keeps=[10000, 100, 20, 20],
                 prmtopdir="{indir}/p9704-tops".format(indir=config.indir),
                 outtopdir="{outdir}/prmtops".format(outdir=config.outdir),
-                struct=self.prc.meta['struct'],
+                struct=self.prcg.meta['struct'],
         )
 
 
-class Center(tasks.PRCTask):
+class Center(tasks.PRCGTask):
     """Use cpptraj to center and image."""
     code = 'ctr'
     dep_class = Strip
@@ -77,7 +77,7 @@ class Center(tasks.PRCTask):
         call_cpptraj_ctr(
                 infn, outfn, logfn,
                 stptopdir="{outdir}/prmtops".format(outdir=config.outdir),
-                struct=self.prc.meta['struct'],
+                struct=self.prcg.meta['struct'],
         )
 
 
