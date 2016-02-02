@@ -73,7 +73,7 @@ class Clean(Task):
     def is_done(self):
 
         # The following check is important:
-        # If non of them have run, then there's nothing to clean up (yet)
+        # If none of them have run, then there's nothing to clean up (yet)
         # and it thinks it's done! It will not be scheduled by an async
         # task scheduler.
         immediate_dep = self.dep_class(self.prcg)
@@ -86,6 +86,9 @@ class Clean(Task):
 
             if self.delete_logs and os.path.exists(task.log_fn):
                 return False
+
+        if self.delete_logs and os.path.exists(immediate_dep.log_fn):
+            return False
 
         return True
 
@@ -114,6 +117,13 @@ class Clean(Task):
                     os.remove(task.log_fn)
                 except FileNotFoundError:
                     pass
+
+        if self.delete_logs:
+            immediate_dep = self.dep_class(self.prcg)
+            try:
+                os.remove(immediate_dep.log_fn)
+            except FileNotFoundError:
+                pass
 
         if self.delete_empty_dirs:
             self._delete_empty_dirs()
@@ -200,8 +210,8 @@ class Project(Dummy, Task):
     def depends(self):
         if self._depends is None:
             self._depends = list(
-                    self.dep_class(self.project, run, clone, prc_dir)
-                    for run, clone, prc_dir in self.get_run_clones(self.indir))
+                self.dep_class(self.project, run, clone, prc_dir)
+                for run, clone, prc_dir in self.get_run_clones(self.indir))
         yield from self._depends
 
 
@@ -225,15 +235,15 @@ class ProjRunClone(Dummy, Task):
     def _get_prcgs(self):
         for gen, rawfn in self.get_gens(self.indir):
             yield self._configure(
-                    PRCG(self.project, self.run, self.clone, gen, rawfn)
+                PRCG(self.project, self.run, self.clone, gen, rawfn)
             )
 
     @property
     def depends(self):
         if self._depends is None:
             self._depends = list(
-                    self.dep_class(prcg)
-                    for prcg in self._get_prcgs()
+                self.dep_class(prcg)
+                for prcg in self._get_prcgs()
             )
         yield from self._depends
 
