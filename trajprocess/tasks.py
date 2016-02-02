@@ -1,12 +1,12 @@
 import errno
 import glob
 import json
+import operator
 import os
 import re
 
 from .config import config
 from .prc import PRCG
-from .project import parse_project
 
 
 class Task:
@@ -262,9 +262,13 @@ class FahProjRunClone(ProjRunClone):
     gen_re = re.compile("")
     gen_glob = ""
 
-    def get_gens(self, prc_dir):
+    def get_gens_unsorted(self, prc_dir):
         for fn in (glob.iglob(self.gen_glob.format(prc_dir=prc_dir))):
             yield int(self.gen_re.search(fn).group(1)), fn
+
+    def get_gens(self, prc_dir):
+        yield from sorted(self.get_gens_unsorted(prc_dir),
+                          key=operator.itemgetter(0))
 
 
 class StructPerRun:
