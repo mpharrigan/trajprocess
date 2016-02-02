@@ -173,8 +173,9 @@ class PRCGTask(Task):
         raise NotImplementedError
 
 
-class ProjRunClone(Dummy, Task):
+class ProjRunClone(Task):
     dep_class = PRCGTask
+    delete_empty_dirs = False
 
     def __init__(self, project, run, clone, indir):
         self.project = project
@@ -197,6 +198,10 @@ class ProjRunClone(Dummy, Task):
             )
 
     @property
+    def is_done(self):
+        return False
+
+    @property
     def depends(self):
         if self._depends is None:
             self._depends = list(
@@ -216,6 +221,34 @@ class ProjRunClone(Dummy, Task):
                     else:
                         print(root, dirs, files, d)
                         raise
+
+    def _try_delete(self, fn):
+        try:
+            os.remove("{}/{}".format(self.indir, fn))
+        except FileNotFoundError:
+            pass
+
+    def do(self):
+        if self.delete_empty_dirs:
+            self._delete_empty_dirs()
+
+        for fn in ['info.json', 'ctr.log', 'stp.log', 'cnv.log', 'cnv1.log',
+                   'cnv2.log']:
+            self._try_delete(fn)
+
+        try:
+            struct = next(self.depends).prcg.meta['struct']
+        except:
+            struct = '(none)'
+
+        with open("{}/{}.json".format(self.indir, config.prc_meta), 'w') as f:
+            json.dump({
+                'project': self.project,
+                'run': self.run,
+                'clone': self.clone,
+                'gens': list(self.get_gens(self.indir)),
+                'struct': struct,
+            }, f)
 
 
 class Project(Dummy, Task):
