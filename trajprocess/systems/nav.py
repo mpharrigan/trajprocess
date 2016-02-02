@@ -93,11 +93,11 @@ class Clean(tasks.Clean):
 
 
 class PRCx21(tasks.StructPerRun, tasks.ProjRunClonex21):
-    pass
+    dep_class = Clean
 
 
 class PRCxA4(tasks.StructPerRun, tasks.ProjRunClonexA4):
-    pass
+    dep_class = Clean
 
 
 class Projectx21(tasks.FahProject):

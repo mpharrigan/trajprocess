@@ -168,7 +168,7 @@ class PRCGTask(Task):
         return os.path.exists(self.fn)
 
     def do(self, task):
-        in_fn = task.fn
+        in_fn = task.fn # isn't task going to be a list? why does this not throw exception?
         if not os.path.exists(in_fn):
             raise FileNotFoundError("Input file for task {} not found. "
                                     "Looking for {}"
@@ -215,7 +215,7 @@ class Project(Dummy, Task):
         yield from self._depends
 
 
-class ProjRunClone(Dummy, Task):
+class ProjRunClone(Task):
     dep_class = PRCGTask
 
     def __init__(self, project, run, clone, indir):
@@ -246,6 +246,13 @@ class ProjRunClone(Dummy, Task):
                 for prcg in self._get_prcgs()
             )
         yield from self._depends
+
+    def do(self, tasks):
+        pass
+
+
+    def is_done(self):
+        pass
 
 
 class FahProject(Project):
