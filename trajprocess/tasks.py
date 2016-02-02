@@ -252,10 +252,14 @@ class FahProject(Project):
     prc_glob = "{indir}/RUN*/CLONE*/"
     prc_re = r"{indir}/RUN(\d+)/CLONE(\d+)/"
 
-    def get_run_clones(self, indir):
+    def get_run_clones_unsorted(self, indir):
         for fn in glob.iglob(self.prc_glob.format(indir=indir)):
             ma = re.match(self.prc_re.format(indir=indir), fn)
             yield int(ma.group(1)), int(ma.group(2)), fn
+
+    def get_run_clones(self, indir):
+        yield from sorted(self.get_run_clones_unsorted(indir),
+                          key=operator.itemgetter(0, 1))
 
 
 class FahProjRunClone(ProjRunClone):
