@@ -147,10 +147,10 @@ class PRCGTask(Task):
 
     @property
     def fn(self):
-        return ("{outdir}/{prcg:dir}/{code}/{prc:gen}.{fext}"
+        return ("{outdir}/{prcg:dir}/{code}/{prcg:gen}.{fext}"
                 .format(outdir=config.outdir,
                         code=self.code,
-                        prc=self.prcg,
+                        prcg=self.prcg,
                         fext=self.fext)
                 )
 
