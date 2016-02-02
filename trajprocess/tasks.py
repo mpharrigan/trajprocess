@@ -168,7 +168,7 @@ class PRCGTask(Task):
         return os.path.exists(self.fn)
 
     def do(self, task):
-        in_fn = task.fn # isn't task going to be a list? why does this not throw exception?
+        in_fn = task.fn  # isn't task going to be a list? why does this not throw exception?
         if not os.path.exists(in_fn):
             raise FileNotFoundError("Input file for task {} not found. "
                                     "Looking for {}"
@@ -187,32 +187,6 @@ class PRCGTask(Task):
 
     def do_file(self, infn, outfn, logfn=None):
         raise NotImplementedError
-
-
-class Project(Dummy, Task):
-    dep_class = ProjRunClone
-
-    def __init__(self, project):
-        self.project = project
-        self.indir = ("{indir}/{project}"
-                      .format(indir=config.indir, project=project))
-        if not os.path.exists(self.indir):
-            raise ValueError("Project in directory doesn't exist. "
-                             "Looking for {}".format(self.indir))
-
-        self._depends = None
-
-    def get_run_clones(self, indir):
-        for fn in glob.iglob("{indir}/*".format(indir=indir)):
-            yield 0, 0, fn
-
-    @property
-    def depends(self):
-        if self._depends is None:
-            self._depends = list(
-                self.dep_class(self.project, run, clone, prc_dir)
-                for run, clone, prc_dir in self.get_run_clones(self.indir))
-        yield from self._depends
 
 
 class ProjRunClone(Task):
@@ -250,9 +224,34 @@ class ProjRunClone(Task):
     def do(self, tasks):
         pass
 
-
     def is_done(self):
         pass
+
+
+class Project(Dummy, Task):
+    dep_class = ProjRunClone
+
+    def __init__(self, project):
+        self.project = project
+        self.indir = ("{indir}/{project}"
+                      .format(indir=config.indir, project=project))
+        if not os.path.exists(self.indir):
+            raise ValueError("Project in directory doesn't exist. "
+                             "Looking for {}".format(self.indir))
+
+        self._depends = None
+
+    def get_run_clones(self, indir):
+        for fn in glob.iglob("{indir}/*".format(indir=indir)):
+            yield 0, 0, fn
+
+    @property
+    def depends(self):
+        if self._depends is None:
+            self._depends = list(
+                self.dep_class(self.project, run, clone, prc_dir)
+                for run, clone, prc_dir in self.get_run_clones(self.indir))
+        yield from self._depends
 
 
 class FahProject(Project):
