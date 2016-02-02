@@ -41,9 +41,9 @@ class _run_function:
     def __init__(self, task):
         self.task = task
 
-    def __call__(self, depend):
+    def __call__(self):
         try:
-            self.task.do(depend)
+            self.task.do()
             return str(self.task)
         except Exception as exc:
             dump(self.task, exc)
@@ -62,7 +62,7 @@ def _execute(task, lbv):
     if not task.is_done:
         with lbv.temp_flags(after=ars, retries=10):
             log.info("Submitting {}".format(task))
-            return lbv.map_async(_run_function(task), list(task.depends))
+            return lbv.map_async(_run_function(task))
 
 
 def execute_task(task, lbv=None):

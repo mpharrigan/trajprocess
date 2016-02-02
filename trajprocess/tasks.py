@@ -21,7 +21,7 @@ class Task:
     def is_done(self):
         raise NotImplementedError
 
-    def do(self, tasks):
+    def do(self):
         raise NotImplementedError
 
     def __str__(self):
@@ -31,7 +31,7 @@ class Task:
 class Dummy:
     is_dummy = True
 
-    def do(self, tasks):
+    def do(self):
         return
 
     @property
@@ -91,7 +91,7 @@ class Clean(Task):
 
         return True
 
-    def do(self, tasks):
+    def do(self):
         for task in self.ephemeral_tasks:
             try:
                 os.remove(task.fn)
@@ -150,8 +150,9 @@ class PRCGTask(Task):
     def is_done(self):
         return os.path.exists(self.fn)
 
-    def do(self, task):
-        in_fn = task.fn  # isn't task going to be a list? why does this not throw exception?
+    def do(self):
+        task = list(self.depends)[0]
+        in_fn = task.fn
         if not os.path.exists(in_fn):
             raise FileNotFoundError("Input file for task {} not found. "
                                     "Looking for {}"
