@@ -189,7 +189,7 @@ class PRCGTask(Task):
         raise NotImplementedError
 
 
-class ProjRunClone(Task):
+class ProjRunClone(Dummy, Task):
     dep_class = PRCGTask
 
     def __init__(self, project, run, clone, indir):
@@ -220,12 +220,6 @@ class ProjRunClone(Task):
                 for prcg in self._get_prcgs()
             )
         yield from self._depends
-
-    def do(self, tasks):
-        pass
-
-    def is_done(self):
-        pass
 
 
 class Project(Dummy, Task):
