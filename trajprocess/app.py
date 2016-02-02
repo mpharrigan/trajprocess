@@ -2,6 +2,9 @@ from contextlib import contextmanager
 from datetime import datetime
 import traceback
 import sys
+import logging
+
+log = logging.getLogger(__name__)
 
 
 class MockLoadBalancedView:
@@ -58,6 +61,7 @@ def _execute(task, lbv):
 
     if not task.is_done:
         with lbv.temp_flags(after=ars, retries=10):
+            log.info("Submitting {}".format(task))
             return lbv.map_async(_run_function(task), list(task.depends))
 
 
