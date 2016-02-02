@@ -55,7 +55,6 @@ class Clean(Task):
     ephemeral_task_classes = []
     dep_class = RawXTC
     delete_logs = False
-    delete_empty_dirs = True
 
     def __init__(self, prcg):
         self.prcg = prcg
@@ -92,19 +91,6 @@ class Clean(Task):
 
         return True
 
-    def _delete_empty_dirs(self):
-        for root, dirs, files in os.walk("{prcg:dir}".format(prcg=self.prcg),
-                                         topdown=False):
-            for d in dirs:
-                try:
-                    os.rmdir(os.path.join(root, d))
-                except OSError as e:
-                    if e.errno == errno.ENOTEMPTY:
-                        pass
-                    else:
-                        print(root, dirs, files, d)
-                        raise
-
     def do(self, tasks):
         for task in self.ephemeral_tasks:
             try:
@@ -124,9 +110,6 @@ class Clean(Task):
                 os.remove(immediate_dep.log_fn)
             except FileNotFoundError:
                 pass
-
-        if self.delete_empty_dirs:
-            self._delete_empty_dirs()
 
     def __str__(self):
         return "<{} {}>".format(self.__class__.__name__, self.prcg)
@@ -220,6 +203,18 @@ class ProjRunClone(Dummy, Task):
                 for prcg in self._get_prcgs()
             )
         yield from self._depends
+
+    def _delete_empty_dirs(self):
+        for root, dirs, files in os.walk(self.indir, topdown=False):
+            for d in dirs:
+                try:
+                    os.rmdir(os.path.join(root, d))
+                except OSError as e:
+                    if e.errno == errno.ENOTEMPTY:
+                        pass
+                    else:
+                        print(root, dirs, files, d)
+                        raise
 
 
 class Project(Dummy, Task):

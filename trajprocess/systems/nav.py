@@ -88,7 +88,6 @@ class Clean(tasks.Clean):
         Trjconv
     ]
     dep_class = Center
-    delete_empty_dirs = True
     delete_logs = True
 
 
