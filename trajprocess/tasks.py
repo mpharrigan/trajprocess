@@ -266,7 +266,7 @@ class ProjRunClone(Task):
                 'first_bad': first_bad,
             }
             gens = gens[:first_bad]
-        prc_meta['gens'] = list(gens)
+        prc_meta['gens'] = gens.tolist()
 
         with open("{}/{}.json".format(self.indir, config.prc_meta), 'w') as f:
             json.dump(prc_meta, f, indent=2)
