@@ -253,7 +253,10 @@ class ProjRunClone(Task):
         except:
             pass
 
-        gens = np.array(list(self.get_gens(self.indir)), dtype=np.int_)
+        gens = np.array([gen_i
+                         for gen_i, gen_fn
+                         in self.get_gens(self.indir)],
+                        dtype=np.int_)
         assert len(np.unique(gens)) == len(gens), 'each gen only once please'
         bad_positions = np.where(gens != np.arange(len(gens)))[0]
         if len(bad_positions) > 0:
