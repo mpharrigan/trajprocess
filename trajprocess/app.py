@@ -24,7 +24,7 @@ def dump(task, exc):
             "An exception occured",
             "--------------------",
             "{}".format(task.__class__),
-            "{}".format(task.prc) if hasattr(task, 'prc') else "unknown prc",
+            "{}".format(task.prcg) if hasattr(task, 'prcg') else "unknown prcg",
             "",
             str(task.__dict__),
             "",
