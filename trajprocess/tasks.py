@@ -183,6 +183,13 @@ class ProjRunClone(Task):
         self.run = run
         self.clone = clone
         self.indir = indir
+        self.outdir = ("{outdir}/{project}/{run}/{clone}"
+                       .format(outdir=config.outdir,
+                               project=project,
+                               run=run,
+                               clone=clone,
+                               )
+                       )
         self._depends = None
 
     def __str__(self):
@@ -216,7 +223,7 @@ class ProjRunClone(Task):
         yield from self._depends
 
     def _delete_empty_dirs(self):
-        for root, dirs, files in os.walk(self.indir, topdown=False):
+        for root, dirs, files in os.walk(self.outdir, topdown=False):
             for d in dirs:
                 try:
                     os.rmdir(os.path.join(root, d))
@@ -229,7 +236,7 @@ class ProjRunClone(Task):
 
     def _try_delete(self, fn):
         try:
-            os.remove("{}/{}".format(self.indir, fn))
+            os.remove("{}/{}".format(self.outdir, fn))
         except FileNotFoundError:
             pass
 
@@ -268,7 +275,7 @@ class ProjRunClone(Task):
             gens = gens[:first_bad]
         prc_meta['gens'] = gens.tolist()
 
-        with open("{}/{}.json".format(self.indir, config.prc_meta), 'w') as f:
+        with open("{}/{}.json".format(self.outdir, config.prc_meta), 'w') as f:
             json.dump(prc_meta, f, indent=2)
 
 
