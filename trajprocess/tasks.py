@@ -4,12 +4,13 @@ import json
 import operator
 import os
 import re
+from collections import OrderedDict
+from datetime import datetime
+
 import numpy as np
 
 from .config import config
 from .prc import PRCG
-
-from collections import OrderedDict
 
 
 class Task:
@@ -254,6 +255,7 @@ class ProjRunClone(Task):
             ('project', self.project),
             ('run', self.run),
             ('clone', self.clone),
+            ('date', datetime.now().isoformat())
         ])
 
         try:
