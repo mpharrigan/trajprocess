@@ -4,6 +4,7 @@ import json
 import operator
 import os
 import re
+import numpy as np
 
 from .config import config
 from .prc import PRCG
@@ -236,19 +237,32 @@ class ProjRunClone(Task):
                    'cnv2.log']:
             self._try_delete(fn)
 
+        prc_meta = {
+            'project': self.project,
+            'run': self.run,
+            'clone': self.clone,
+        }
+
         try:
             struct = next(self.depends).prcg.meta['struct']
+            prc_meta['struct'] = struct
         except:
-            struct = '(none)'
+            pass
+
+        gens = np.array(list(self.get_gens(self.indir)), dtype=np.int_)
+        assert len(np.unique(gens)) == len(gens), 'each gen only once please'
+        bad_positions = np.where(gens != np.arange(len(gens)))[0]
+        if len(bad_positions) > 0:
+            first_bad = bad_positions[0]
+            prc_meta['warning'] = {
+                'message': "Only using gens after {}".format(first_bad),
+                'first_bad': first_bad,
+            }
+            gens = gens[:first_bad]
+        prc_meta['gens'] = list(gens)
 
         with open("{}/{}.json".format(self.indir, config.prc_meta), 'w') as f:
-            json.dump({
-                'project': self.project,
-                'run': self.run,
-                'clone': self.clone,
-                'gens': list(self.get_gens(self.indir)),
-                'struct': struct,
-            }, f)
+            json.dump(prc_meta, f, indent=2)
 
 
 class Project(Dummy, Task):
