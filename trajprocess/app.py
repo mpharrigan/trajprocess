@@ -23,6 +23,7 @@ def dump(task, exc):
         f.write("\n".join([
             "An exception occured",
             "--------------------",
+            "{}".format(task),
             "{}".format(task.__class__),
             "{}".format(task.prcg) if hasattr(task, 'prcg') else "unknown prcg",
             "",

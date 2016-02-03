@@ -9,6 +9,8 @@ import numpy as np
 from .config import config
 from .prc import PRCG
 
+from collections import OrderedDict
+
 
 class Task:
     is_ephemeral = False
@@ -248,11 +250,11 @@ class ProjRunClone(Task):
                    'cnv2.log']:
             self._try_delete(fn)
 
-        prc_meta = {
-            'project': self.project,
-            'run': self.run,
-            'clone': self.clone,
-        }
+        prc_meta = OrderedDict([
+            ('project', self.project),
+            ('run', self.run),
+            ('clone', self.clone),
+        ])
 
         try:
             struct = next(self.depends).prcg.meta['struct']
