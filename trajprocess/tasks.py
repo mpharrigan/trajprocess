@@ -273,8 +273,8 @@ class ProjRunClone(Task):
         if len(bad_positions) > 0:
             first_bad = bad_positions[0]
             prc_meta['warning'] = {
-                'message': "Only using gens after {}".format(first_bad),
-                'first_bad': first_bad,
+                'message': "Only using gens up to {}".format(first_bad),
+                'first_bad': int(first_bad),  # cast from numpy int for json
             }
             gens = gens[:first_bad]
         prc_meta['gens'] = gens.tolist()
