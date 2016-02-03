@@ -379,19 +379,31 @@ class ProjRunClonexA4(FahProjRunClone):
         return prcg
 
 
-class ProjectBluewaters(Project):
+class BluewatersProjRunClone(ProjRunClone):
+    gen_glob = ""
+    gen_re = re.compile(r"")
+
     def _configure(self, prcg):
         prcg.meta['needs_trjconv'] = True
         prcg.meta['tpr_fn'] = ("{indir}/topol.tpr"
                                .format(indir=os.path.dirname(prcg.in_fn)))
         return prcg
 
-    def get_run_clones(self, indir):
-        # TODO
-        for fn in glob.iglob("*/"):
-            yield 0, 0, fn
-
     def get_gens(self, prc_dir):
-        # TODO
-        for fn in glob.iglob("{prc_dir}/*.xtc".format(prc_dir=prc_dir)):
-            yield 0, fn
+        # only one gen in bluewaters
+        yield from [(0, '{prc_dir}/traj_comp.xtc'.format(prc_dir=prc_dir))]
+
+
+class BluewatersProject(Project):
+    prc_glob = "{indir}/run-*/traj_comp.xtc"
+    prc_re = r"{indir}/run-(\d+)/traj_comp\.xtc"
+
+    def get_run_clones_unsorted(self, indir):
+        for fn in glob.iglob(self.prc_glob.format(indir=indir)):
+            ma = re.match(self.prc_re.format(indir=indir), fn)
+            # clone always zero!
+            yield int(ma.group(1)), 0, os.path.basename(fn)
+
+    def get_run_clones(self, indir):
+        yield from sorted(self.get_run_clones_unsorted(indir),
+                          key=operator.itemgetter(0, 1))

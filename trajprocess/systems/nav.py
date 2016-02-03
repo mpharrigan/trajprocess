@@ -19,10 +19,10 @@ class Trjconv(tasks.PRCGTask):
     def do_file(self, infn, outfn, logfn=None):
         assert self.prcg.project == 'p9752', "stride 4 makes no sense otherwise"
         run_trjconv(
-                infn, outfn,
-                log_fn=logfn,
-                top_fn=self.prcg.meta['tpr_fn'],
-                stride=4,
+            infn, outfn,
+            log_fn=logfn,
+            top_fn=self.prcg.meta['tpr_fn'],
+            stride=4,
         )
 
 
@@ -58,12 +58,12 @@ class Strip(tasks.PRCGTask):
 
     def do_file(self, infn, outfn, logfn=None):
         call_cpptraj_stp(
-                infn, outfn, logfn,
-                removes=[":WAT", ":MY", "@Na+", "@Cl-"],
-                num_to_keeps=[10000, 100, 20, 20],
-                prmtopdir="{indir}/p9704-tops".format(indir=config.indir),
-                outtopdir="{outdir}/prmtops".format(outdir=config.outdir),
-                struct=self.prcg.meta['struct'],
+            infn, outfn, logfn,
+            removes=[":WAT", ":MY", "@Na+", "@Cl-"],
+            num_to_keeps=[10000, 100, 20, 20],
+            prmtopdir="{indir}/p9704-tops".format(indir=config.indir),
+            outtopdir="{outdir}/prmtops".format(outdir=config.outdir),
+            struct=self.prcg.meta['struct'],
         )
 
 
@@ -75,9 +75,9 @@ class Center(tasks.PRCGTask):
 
     def do_file(self, infn, outfn, logfn=None):
         call_cpptraj_ctr(
-                infn, outfn, logfn,
-                stptopdir="{outdir}/prmtops".format(outdir=config.outdir),
-                struct=self.prcg.meta['struct'],
+            infn, outfn, logfn,
+            stptopdir="{outdir}/prmtops".format(outdir=config.outdir),
+            struct=self.prcg.meta['struct'],
         )
 
 
@@ -99,6 +99,10 @@ class PRCxA4(tasks.StructPerRun, tasks.ProjRunClonexA4):
     dep_class = Clean
 
 
+class PRCxBW(tasks.StructPerRun, tasks.BluewatersProjRunClone):
+    dep_class = Clean
+
+
 class Projectx21(tasks.FahProject):
     dep_class = PRCx21
 
@@ -107,8 +111,14 @@ class ProjectxA4(tasks.FahProject):
     dep_class = PRCxA4
 
 
+class ProjectxBW(tasks.BluewatersProject):
+    dep_class = PRCxBW
+
+
 class NaV(tasks.Dummy, tasks.Task):
     depends = [
+        ProjectxBW("v4"),
+        ProjectxBW("v5"),
         Projectx21("p9704"),
         ProjectxA4("p9752"),
     ]
