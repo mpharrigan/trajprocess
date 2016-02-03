@@ -185,6 +185,10 @@ class ProjRunClone(Task):
         self.indir = indir
         self._depends = None
 
+    def __str__(self):
+        return ("<{kls} {project}-{run}-{clone}>"
+                .format(kls=self.__class__.__name__, **self.__dict__))
+
     def _configure(self, prcg):
         return prcg
 
