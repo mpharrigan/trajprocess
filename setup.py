@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
         name="trajprocess",
-        version='4.1.7',
+        version='4.1.8',
         packages=find_packages(),
         zip_safe=False,
         include_package_data=True,
