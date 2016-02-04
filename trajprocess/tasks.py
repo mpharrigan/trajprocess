@@ -402,7 +402,7 @@ class BluewatersProject(Project):
         for fn in glob.iglob(self.prc_glob.format(indir=indir)):
             ma = re.match(self.prc_re.format(indir=indir), fn)
             # clone always zero!
-            yield int(ma.group(1)), 0, os.path.basename(fn)
+            yield int(ma.group(1)), 0, os.path.dirname(fn)
 
     def get_run_clones(self, indir):
         yield from sorted(self.get_run_clones_unsorted(indir),
