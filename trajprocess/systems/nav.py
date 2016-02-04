@@ -17,12 +17,15 @@ class Trjconv(tasks.PRCGTask):
     is_ephemeral = True
 
     def do_file(self, infn, outfn, logfn=None):
-        assert self.prcg.project == 'p9752', "stride 4 makes no sense otherwise"
+        if 'stride' in self.prcg.meta:
+            stride = self.prcg.meta['stride']
+        else:
+            stride = 1
         run_trjconv(
             infn, outfn,
             log_fn=logfn,
             top_fn=self.prcg.meta['tpr_fn'],
-            stride=4,
+            stride=stride,
         )
 
 
@@ -97,6 +100,12 @@ class PRCx21(tasks.StructPerRun, tasks.ProjRunClonex21):
 
 class PRCxA4(tasks.StructPerRun, tasks.ProjRunClonexA4):
     dep_class = Clean
+
+    def _configure(self, prcg):
+        prcg = super()._configure(prcg)
+        assert prcg.project == 'p9752', 'error otherwise'
+        prcg.meta['stride'] = 4
+        return prcg
 
 
 class PRCxBW(tasks.StructPerRun, tasks.BluewatersProjRunClone):
