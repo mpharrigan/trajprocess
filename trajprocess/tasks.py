@@ -380,8 +380,10 @@ class ProjRunClonexA4(FahProjRunClone):
 
 
 class BluewatersProjRunClone(ProjRunClone):
-    gen_glob = ""
-    gen_re = re.compile(r"")
+    """Make sure you split your trajectories into gens"""
+
+    gen_re = re.compile(r"split(\d+)\.xtc")
+    gen_glob = "{prc_dir}/split*.xtc"
 
     def _configure(self, prcg):
         prcg.meta['needs_trjconv'] = True
@@ -389,9 +391,13 @@ class BluewatersProjRunClone(ProjRunClone):
                                .format(indir=os.path.dirname(prcg.in_fn)))
         return prcg
 
+    def get_gens_unsorted(self, prc_dir):
+        for fn in (glob.iglob(self.gen_glob.format(prc_dir=prc_dir))):
+            yield int(self.gen_re.search(fn).group(1)), fn
+
     def get_gens(self, prc_dir):
-        # only one gen in bluewaters
-        yield from [(0, '{prc_dir}/traj_comp.xtc'.format(prc_dir=prc_dir))]
+        yield from sorted(self.get_gens_unsorted(prc_dir),
+                          key=operator.itemgetter(0))
 
 
 class BluewatersProject(Project):
