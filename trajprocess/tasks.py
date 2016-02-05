@@ -380,13 +380,17 @@ class ProjRunClonexA4(FahProjRunClone):
 
 
 class BluewatersProjRunClone(ProjRunClone):
-    """Make sure you split your trajectories into gens"""
+    """Make sure you split your trajectories into gens.
+
+    Also make sure you do `-pbc mol` while you're splitting
+    """
 
     gen_re = re.compile(r"split(\d+)\.xtc")
     gen_glob = "{prc_dir}/split*.xtc"
 
     def _configure(self, prcg):
-        prcg.meta['needs_trjconv'] = True
+        #prcg.meta['needs_trjconv'] = True
+        # make sure you run trjconv!
         prcg.meta['tpr_fn'] = ("{indir}/topol.tpr"
                                .format(indir=os.path.dirname(prcg.in_fn)))
         return prcg
