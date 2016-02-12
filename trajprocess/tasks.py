@@ -389,7 +389,7 @@ class BluewatersProjRunClone(ProjRunClone):
     gen_glob = "{prc_dir}/split*.xtc"
 
     def _configure(self, prcg):
-        #prcg.meta['needs_trjconv'] = True
+        # prcg.meta['needs_trjconv'] = True
         # make sure you run trjconv!
         prcg.meta['tpr_fn'] = ("{indir}/topol.tpr"
                                .format(indir=os.path.dirname(prcg.in_fn)))
@@ -405,14 +405,14 @@ class BluewatersProjRunClone(ProjRunClone):
 
 
 class BluewatersProject(Project):
-    prc_glob = "{indir}/run-*/traj_comp.xtc"
-    prc_re = r"{indir}/run-(\d+)/traj_comp\.xtc"
+    prc_glob = "{indir}/run-*/"
+    prc_re = r"{indir}/run-(\d+)/"
 
     def get_run_clones_unsorted(self, indir):
         for fn in glob.iglob(self.prc_glob.format(indir=indir)):
             ma = re.match(self.prc_re.format(indir=indir), fn)
             # clone always zero!
-            yield int(ma.group(1)), 0, os.path.dirname(fn)
+            yield int(ma.group(1)), 0, fn
 
     def get_run_clones(self, indir):
         yield from sorted(self.get_run_clones_unsorted(indir),
