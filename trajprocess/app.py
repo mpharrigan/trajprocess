@@ -10,7 +10,10 @@ log = logging.getLogger(__name__)
 class MockLoadBalancedView:
     def map_async(self, func, args):
         for a in args:
-            func(a)
+            try:
+                func(a)
+            except:
+                pass
 
     @contextmanager
     def temp_flags(self, **kwargs):
@@ -48,6 +51,7 @@ class _run_function:
             return str(self.task)
         except Exception as exc:
             dump(self.task, exc)
+            raise exc
 
 
 def _execute(task, lbv):
